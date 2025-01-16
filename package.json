@@ -1,0 +1,29 @@
+{
+  "name": "aeon",
+  "version": "0.0.0",
+  "author": {
+    "name": "Brian Cavalier",
+    "email": "brian@briancavalier.com"
+  },
+  "scripts": {
+    "build": "npx cdk synth",
+    "deploy": "npx cdk deploy",
+    "destroy": "npx cdk destroy"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.724.0",
+    "@aws-sdk/client-eventbridge": "^3.723.0",
+    "@aws-sdk/client-sns": "^3.723.0",
+    "@aws-sdk/lib-dynamodb": "^3.731.1",
+    "@types/aws-lambda": "^8.10.147",
+    "@types/node": "^22.10.5",
+    "aws-cdk": "^2.176.0",
+    "aws-cdk-lib": "^2.174.1",
+    "aws-lambda": "^1.0.7",
+    "constructs": "^10.4.2",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "ulid": "^2.3.0"
+  }
+}
