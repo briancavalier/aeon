@@ -3,8 +3,8 @@ import { AttributeType, BillingMode, StreamViewType, Table } from 'aws-cdk-lib/a
 import { EventBus } from 'aws-cdk-lib/aws-events'
 import { FunctionUrlAuthType, Runtime } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
-import { EventBusNotifier, EventBusSubscriber } from './eventbridge'
-import { EventStore } from './eventstore'
+import { EventBusNotifier, EventBusSubscriber } from '../../src/aws-constructs/eventbridge'
+import { EventStore } from '../../src/aws-constructs/eventstore'
 
 const app = new App()
 const stack = new Stack(app, 'leaderboard')
