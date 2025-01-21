@@ -3,7 +3,7 @@ import { BatchGetCommand, DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import assert from 'node:assert'
 import { Id } from '../lib/id'
-import { getPosition } from './common'
+import { getRevision, hasSeenRevision, Revision } from './revision'
 
 assert(process.env.viewTableName)
 
@@ -14,13 +14,18 @@ const docClient = DynamoDBDocumentClient.from(client)
 export const handler = async (event: APIGatewayProxyEvent) => {
   const { leaderboardId, userId, revision } = event.queryStringParameters ?? {}
 
-  const current = await getPosition(client, table, 'leaderboard-events') ?? ''
+  console.debug('Querying leaderboards', leaderboardId, userId, revision)
 
-  if (revision && revision > current)
-    return retryAfter(current, revision, 5)
+  const requested = parseRevision(revision)
+  const current = await getRevision(client, table)
 
-  if (leaderboardId)
-    return (await getLeaderboard(leaderboardId)) ?? { statusCode: 404, body: '' }
+  if (!hasSeenRevision(current, requested))
+    return retryAfter(current, requested, 5)
+
+  if (leaderboardId) {
+    const leaderboard = await getLeaderboard(leaderboardId)
+    return leaderboard ?? { statusCode: 404, body: '' }
+  }
 
   if (userId)
     return getUserLeaderboards(userId)
@@ -28,7 +33,12 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   return { statusCode: 400, body: '' }
 }
 
-const retryAfter = (current: string, requested: string, retryAfterSeconds: number) => ({
+const parseRevision = (revision: string | undefined): Revision =>
+  revision
+    ? Object.fromEntries(revision.split(',').map(r => r.split(':')))
+    : {}
+
+const retryAfter = (current: Revision, requested: Revision, retryAfterSeconds: number) => ({
   statusCode: 202,
   headers: { 'Retry-After': `${retryAfterSeconds}` },
   body: { current, requested, retryAfterSeconds }
@@ -56,6 +66,8 @@ const getLeaderboard = async (leaderboardId: string): Promise<Leaderboard | unde
       ':pk': `leaderboard/${leaderboardId}`
     },
   }))
+
+  if (Items.length === 0) return undefined
 
   let leaderboard = {} as Leaderboard
   let competitors = [] as readonly Competitor[]

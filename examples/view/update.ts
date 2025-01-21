@@ -4,7 +4,7 @@ import assert from 'node:assert'
 import { createClient, nextPosition, Notification, read } from '../../src/eventstore'
 import { CompetitorAddedEvent, CompetitorScoreUpdatedEvent, LeaderboardCreatedEvent, LeaderboardEvent } from '../leaderboard/domain'
 import { DisplayNameUpdatedEvent, UserProfileEvent } from '../user-profile/domain'
-import { getPosition, updatePosition } from './common'
+import { getRevision, updateRevision } from './revision'
 
 assert(process.env.viewTableName)
 
@@ -15,7 +15,8 @@ const docClient = DynamoDBDocumentClient.from(client)
 export const handler = async ({ eventStoreName, end }: Notification) => {
   const store = createClient(eventStoreName, client)
 
-  const start = await getPosition(docClient, table, eventStoreName)
+  const revision = await getRevision(docClient, table)
+  const start = revision[eventStoreName]
 
   console.debug('Reading events', start, end)
 
@@ -47,7 +48,7 @@ export const handler = async ({ eventStoreName, end }: Notification) => {
     }
   }
 
-  await updatePosition(docClient, table, eventStoreName, end)
+  await updateRevision(docClient, table, { ...revision, [eventStoreName]: end })
     .catch(e => {
       if (e.name !== 'ConditionalCheckFailedException')
         throw e
