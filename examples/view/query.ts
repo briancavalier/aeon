@@ -31,7 +31,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 const retryAfter = (current: string, requested: string, retryAfterSeconds: number) => ({
   statusCode: 202,
   headers: { 'Retry-After': `${retryAfterSeconds}` },
-  body: JSON.stringify({ current, requested, retryAfterSeconds })
+  body: { current, requested, retryAfterSeconds }
 })
 
 type Leaderboard = Readonly<{

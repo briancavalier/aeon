@@ -2,9 +2,9 @@ import { Id } from '../lib/id'
 import { LeaderboardEvent } from './domain'
 
 export type LeaderboardCommand =
-  | Readonly<{ tag: 'create', id: Id<'Leaderboard'>, name: string, description: string }>
-  | Readonly<{ tag: 'add-competitor', id: Id<'Leaderboard'>, userId: Id<'User'>, score: number }>
-  | Readonly<{ tag: 'update-competitor-score', id: Id<'Leaderboard'>, userId: Id<'User'>, score: number }>
+  | Readonly<{ type: 'create', id: Id<'Leaderboard'>, name: string, description: string }>
+  | Readonly<{ type: 'add-competitor', id: Id<'Leaderboard'>, userId: Id<'User'>, score: number }>
+  | Readonly<{ type: 'update-competitor-score', id: Id<'Leaderboard'>, userId: Id<'User'>, score: number }>
 
 export type Leaderboard = Readonly<{
   id: Id<'Leaderboard'>,
@@ -17,12 +17,12 @@ type Competitor = Readonly<{
 }>
 
 export const decide = (leaderboard: Leaderboard | undefined, command: LeaderboardCommand): readonly LeaderboardEvent[] => {
-  switch (command.tag) {
+  switch (command.type) {
     case 'create':
-      return leaderboard === undefined ? [{ ...command, tag: 'created' }] : []
+      return leaderboard === undefined ? [{ ...command, type: 'created' }] : []
 
     case 'add-competitor':
-      return leaderboard !== undefined ? [{ ...command, tag: 'competitor-added' }] : []
+      return leaderboard !== undefined ? [{ ...command, type: 'competitor-added' }] : []
 
     case 'update-competitor-score': {
       if (!leaderboard) return []
@@ -30,14 +30,14 @@ export const decide = (leaderboard: Leaderboard | undefined, command: Leaderboar
       // Produce event only if competitor exists and new score > current score
       const competitor = leaderboard?.competitors.find(c => c.userId === command.userId)
       return competitor && command.score > competitor.score
-        ? [{ ...command, tag: 'competitor-score-updated' }]
+        ? [{ ...command, type: 'competitor-score-updated' }]
         : []
     }
   }
 }
 
 export const update = (leaderboard: Leaderboard | undefined, event: LeaderboardEvent): Leaderboard | undefined => {
-  switch (event.tag) {
+  switch (event.type) {
     case 'created':
       return { id: event.id, competitors: [] }
 

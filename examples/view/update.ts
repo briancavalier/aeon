@@ -25,7 +25,7 @@ export const handler = async ({ eventStoreName, end }: Notification) => {
     const event = data as LeaderboardEvent | UserProfileEvent
     console.debug('Processing event', event)
 
-    switch (event.tag) {
+    switch (event.type) {
       case 'display-name-updated':
         await docClient.send(updateCompetitorDisplayName(table, event))
         break
@@ -55,7 +55,7 @@ export const handler = async ({ eventStoreName, end }: Notification) => {
     })
 }
 
-const updateCompetitorDisplayName = (table: string, { tag, userId, ...data }: DisplayNameUpdatedEvent) =>
+const updateCompetitorDisplayName = (table: string, { type, userId, ...data }: DisplayNameUpdatedEvent) =>
   new UpdateCommand({
     TableName: table,
     Key: {
@@ -71,7 +71,7 @@ const updateCompetitorDisplayName = (table: string, { tag, userId, ...data }: Di
     },
   })
 
-const putLeaderboard = (table: string, { tag, id, ...data }: LeaderboardCreatedEvent) =>
+const putLeaderboard = (table: string, { type, id, ...data }: LeaderboardCreatedEvent) =>
   new PutCommand({
     TableName: table,
     Item: {
@@ -83,7 +83,7 @@ const putLeaderboard = (table: string, { tag, id, ...data }: LeaderboardCreatedE
     ConditionExpression: 'attribute_not_exists(pk)'
   })
 
-const putCompetitor = (table: string, { tag, id, ...data }: CompetitorAddedEvent) =>
+const putCompetitor = (table: string, { type, id, ...data }: CompetitorAddedEvent) =>
   new TransactWriteCommand({
     TransactItems: [
       {

@@ -6,21 +6,21 @@ export type LeaderboardEvent =
   | CompetitorScoreUpdatedEvent
 
 export type LeaderboardCreatedEvent = Readonly<{
-  tag: 'created',
+  type: 'created',
   id: Id<'Leaderboard'>,
   name: string,
   description: string
 }>
 
 export type CompetitorAddedEvent = Readonly<{
-  tag: 'competitor-added',
+  type: 'competitor-added',
   id: Id<'Leaderboard'>,
   userId: Id<'User'>,
   score: number
 }>
 
 export type CompetitorScoreUpdatedEvent = Readonly<{
-  tag: 'competitor-score-updated',
+  type: 'competitor-score-updated',
   id: Id<'Leaderboard'>,
   userId: Id<'User'>,
   score: number

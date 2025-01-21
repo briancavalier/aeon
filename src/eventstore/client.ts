@@ -17,23 +17,19 @@ export const createClient = (eventsTable: string, client: DynamoDBClient, nextPo
   nextPosition: nextPosition ?? monotonicFactory() as (t: number) => Position
 })
 
-export type Pending<K, T, D> = {
-  readonly key: K
-  readonly type: T
+export type Pending<D> = {
+  readonly key: string
+  readonly type: string
   readonly timestamp: string // RFC3339 UTC datetime
   readonly data: D
-}
-
-export type Appended = {
-  end?: Position
 }
 
 /**
  * Append events to the event store. Provide an idempotency key to ensure
  * the events are only written once even if the same request is retried.
  */
-export const append = async <const K extends string, const T extends string, const D>(es: EventStoreClient, e: readonly Pending<K, T, D>[], idempotencyKey?: string): Promise<Appended> => {
-  if (e.length === 0) return {}
+export const append = async <const D>(es: EventStoreClient, e: readonly Pending<D>[], idempotencyKey?: string): Promise<Position | undefined> => {
+  if (e.length === 0) return undefined
 
   const now = Date.now()
   const items = e.map(e => {
@@ -80,12 +76,12 @@ export const append = async <const K extends string, const T extends string, con
     ReturnConsumedCapacity: 'TOTAL'
   }))
 
-  return (idempotencyKey && wasIdempotent(result.ConsumedCapacity ?? []))
-    ? {}
-    : { end: items[items.length - 1].Put.Item.position.S }
+  return idempotencyKey && wasIdempotent(result.ConsumedCapacity ?? [])
+    ? undefined
+    : items[items.length - 1].Put.Item.position.S
 }
 
-export type Committed<K, T extends string, D> = Pending<K, T, D> & {
+export type Committed<D> = Pending<D> & {
   readonly slice: string
   readonly position: Position
 }
@@ -95,7 +91,7 @@ export type Committed<K, T extends string, D> = Pending<K, T, D> & {
  * start will read from the beginning, and ommitting end will read to end of the
  * event store.  Omit range entirely to read all events.
  */
-export async function* read(es: EventStoreClient, range: Partial<Range> = {}): AsyncIterable<Committed<string, string, unknown>> {
+export async function* read(es: EventStoreClient, range: Partial<Range> = {}): AsyncIterable<Committed<unknown>> {
   // TODO: Blindly calling getExtents here is inefficient
   const extents = await getExtents(es, range)
   const start = getSlice(extents.start)
@@ -129,7 +125,7 @@ export async function* read(es: EventStoreClient, range: Partial<Range> = {}): A
  * and omitting start will read from the beginning, and ommitting end will read to
  * end of the event store.  Omit range entirely to read all events for the specified key.
  */
-export async function* readKey<K extends string>(es: EventStoreClient, key: K, { start, end }: Partial<Range> = {}): AsyncIterable<Committed<K, string, unknown>> {
+export async function* readKey(es: EventStoreClient, key: string, { start, end }: Partial<Range> = {}): AsyncIterable<Committed<unknown>> {
   const results = paginateQuery(es,
     {
       TableName: es.eventsTable,
@@ -150,7 +146,25 @@ export async function* readKey<K extends string>(es: EventStoreClient, key: K, {
     })
 
   for await (const { Items = [] } of results)
-    yield* Items.map(toEvent<K>)
+    yield* Items.map(toEvent)
+}
+
+/**
+ * Read the most recent event for the provided key. This can be
+ * useful to peek at the latest event or position for a key.
+ */
+export const readKeyLatest = async <K extends string>(es: EventStoreClient, key: K): Promise<Committed<unknown> | undefined> => {
+  const { Items = [] } = await es.client.send(new QueryCommand({
+    TableName: es.eventsTable,
+    IndexName: `${es.eventsTable}-by-key-position`,
+    KeyConditionExpression: '#key = :key',
+    ExpressionAttributeNames: { '#key': 'key' },
+    ExpressionAttributeValues: { ':key': { S: key } },
+    Limit: 1,
+    ScanIndexForward: false
+  }))
+
+  return Items[0] && toEvent(Items[0])
 }
 
 const getExtents = async (es: EventStoreClient, range: Partial<Range>): Promise<Range> => {
@@ -196,14 +210,14 @@ const getEnd = (p1: Position | undefined, p2: Position | undefined): Position =>
   return p1 ?? p2 ?? positionMax
 }
 
-const toEvent = <K = string>(item: Record<string, AttributeValue>): Committed<K, string, unknown> => ({
+const toEvent = (item: Record<string, AttributeValue>): Committed<unknown> => ({
   slice: item.slice.S,
   key: item.key.S,
   type: item.type.S,
   position: item.position.S,
   timestamp: item.timestamp.S,
   data: JSON.parse(item.data.S as string)
-} as Committed<K, string, unknown>)
+} as Committed<unknown>)
 
 const wasIdempotent = (consumedCapacity: readonly { readonly CapacityUnits?: number }[]): boolean =>
   0 === consumedCapacity.reduce(
