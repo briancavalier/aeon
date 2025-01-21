@@ -14,7 +14,7 @@ const docClient = DynamoDBDocumentClient.from(client)
 export const handler = async (event: APIGatewayProxyEvent) => {
   const { leaderboardId, userId, revision } = event.queryStringParameters ?? {}
 
-  console.debug('Querying leaderboards', leaderboardId, userId, revision)
+  console.debug({ msg: 'Querying leaderboards', leaderboardId, userId, revision })
 
   const requested = parseRevision(revision)
   const current = await getRevision(client, table)

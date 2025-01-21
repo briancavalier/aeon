@@ -1,7 +1,7 @@
 import { ConditionalCheckFailedException, DynamoDBClient, TransactionCanceledException } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, PutCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import assert from 'node:assert'
-import { createClient, nextPosition, Notification, read } from '../../src/eventstore'
+import { fromConfig, nextPosition, Notification, read } from '../../src/eventstore'
 import { CompetitorAddedEvent, CompetitorScoreUpdatedEvent, LeaderboardCreatedEvent, LeaderboardEvent } from '../leaderboard/domain'
 import { DisplayNameUpdatedEvent, UserProfileEvent } from '../user-profile/domain'
 import { getRevision, updateRevision } from './revision'
@@ -12,19 +12,19 @@ const table = process.env.viewTableName
 const client = new DynamoDBClient({})
 const docClient = DynamoDBDocumentClient.from(client)
 
-export const handler = async ({ eventStoreName, end }: Notification) => {
-  const store = createClient(eventStoreName, client)
+export const handler = async ({ eventStoreConfig, end }: Notification) => {
+  const store = fromConfig(eventStoreConfig, client)
 
   const revision = await getRevision(docClient, table)
-  const start = revision[eventStoreName]
+  const start = revision[eventStoreConfig.name]
 
-  console.debug('Reading events', start, end)
+  console.debug({ msg: 'Reading events', start, end })
 
   const events = read(store, { start: start ? nextPosition(start) : undefined, end }) //as AsyncIterable<Committed<string, string, unknown>>
 
   for await (const { data } of events) {
     const event = data as LeaderboardEvent | UserProfileEvent
-    console.debug('Processing event', event)
+    console.debug({ msg: 'Processing event', event })
 
     switch (event.type) {
       case 'display-name-updated':
@@ -48,12 +48,7 @@ export const handler = async ({ eventStoreName, end }: Notification) => {
     }
   }
 
-  await updateRevision(docClient, table, { ...revision, [eventStoreName]: end })
-    .catch(e => {
-      if (e.name !== 'ConditionalCheckFailedException')
-        throw e
-      console.debug('Skipping subscriber position update')
-    })
+  await updateRevision(docClient, table, { ...revision, [eventStoreConfig.name]: end })
 }
 
 const updateCompetitorDisplayName = (table: string, { type, userId, ...data }: DisplayNameUpdatedEvent) =>

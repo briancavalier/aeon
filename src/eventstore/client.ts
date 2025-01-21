@@ -1,21 +1,44 @@
 import { AttributeValue, DynamoDBClient, paginateQuery, QueryCommand, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
+import assert from 'node:assert'
 import { monotonicFactory, } from 'ulid'
 import { Position, Range } from './position'
 import { getSlice, Slice, sliceEnd, slices, sliceStart } from './slice'
 
 export interface EventStoreClient {
-  readonly client: DynamoDBClient
+  readonly name: string
   readonly eventsTable: string
   readonly metadataTable: string
+  readonly client: DynamoDBClient
   readonly nextPosition: (epochMilliseconds: number) => Position
 }
 
-export const createClient = (eventsTable: string, client: DynamoDBClient, nextPosition?: (epochMilliseconds?: number) => Position): EventStoreClient => ({
+export type EventStoreConfig = {
+  readonly name: string,
+  readonly eventsTable: string
+  readonly metadataTable: string
+}
+
+export const fromConfig = (config: EventStoreConfig, client: DynamoDBClient, nextPosition?: (epochMilliseconds?: number) => Position): EventStoreClient => ({
+  ...config,
   client,
-  eventsTable,
-  metadataTable: `${eventsTable}-metadata`,
   nextPosition: nextPosition ?? monotonicFactory() as (t: number) => Position
 })
+
+export const fromConfigString = (configString: string, client: DynamoDBClient, nextPosition?: (epochMilliseconds?: number) => Position): EventStoreClient =>
+  fromConfig(parseConfig(configString), client, nextPosition)
+
+export const parseConfig = (configString: string): EventStoreConfig => {
+  try {
+    const config = JSON.parse(configString)
+    assert(config)
+    assert(typeof config.name === 'string', 'name must be a string')
+    assert(typeof config.eventsTable === 'string', 'eventsTable must be a string')
+    assert(typeof config.metadataTable === 'string', 'metadataTable must be a string')
+    return config
+  } catch (e) {
+    throw new Error(`Invalid configString: ${configString}`, { cause: e })
+  }
+}
 
 export type Pending<D> = {
   readonly key: string
@@ -96,8 +119,6 @@ export async function* read(es: EventStoreClient, range: Partial<Range> = {}): A
   const extents = await getExtents(es, range)
   const start = getSlice(extents.start)
   const end = getSlice(extents.end)
-
-  console.debug('Reading slices', extents, start, end)
 
   for (const slice of slices(start, end)) {
     const results = paginateQuery(es,

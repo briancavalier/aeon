@@ -1,33 +1,47 @@
 import { EventPattern, IEventBus, IRule, Rule, RuleTargetInput } from 'aws-cdk-lib/aws-events'
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets'
-import { IFunction, Runtime, StartingPosition } from 'aws-cdk-lib/aws-lambda'
+import { ApplicationLogLevel, IFunction, LoggingFormat, Runtime, StartingPosition, SystemLogLevel } from 'aws-cdk-lib/aws-lambda'
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { Construct } from 'constructs'
+import path from 'node:path'
 import { IEventStore } from './eventstore'
+
+export type EventBusNotifierProps = Readonly<{
+  eventStore: IEventStore
+  eventBus: IEventBus
+  applicationLogLevelV2?: ApplicationLogLevel.WARN,
+  systemLogLevelV2?: SystemLogLevel.WARN,
+}>
 
 export class EventBusNotifier extends Construct {
   public readonly notify: IFunction
 
-  constructor(scope: Construct, id: string, props: {
-    eventStore: IEventStore
-    eventBus: IEventBus
-  }) {
+  constructor(scope: Construct, id: string, {
+    eventStore,
+    eventBus,
+    applicationLogLevelV2,
+    systemLogLevelV2
+  }: EventBusNotifierProps) {
     super(scope, id)
 
     const notify = this.notify = new NodejsFunction(scope, `${id}-handler`, {
-      entry: 'src/eventbridge/notify.ts',
+      // FIXME: How to use import.meta.dirname here?
+      entry: path.resolve(__dirname, './notify.ts'),
       runtime: Runtime.NODEJS_22_X,
+      loggingFormat: LoggingFormat.JSON,
+      applicationLogLevelV2,
+      systemLogLevelV2,
       environment: {
-        eventStoreName: props.eventStore.name,
-        eventBusName: props.eventBus.eventBusName
+        eventStoreConfig: eventStore.config,
+        eventBusName: eventBus.eventBusName
       }
     })
 
-    props.eventBus.grantPutEventsTo(notify)
-    props.eventStore.eventsTable.grantStreamRead(notify)
+    eventBus.grantPutEventsTo(notify)
+    eventStore.eventsTable.grantStreamRead(notify)
 
-    notify.addEventSource(new DynamoEventSource(props.eventStore.eventsTable, {
+    notify.addEventSource(new DynamoEventSource(eventStore.eventsTable, {
       startingPosition: StartingPosition.LATEST,
       filters: [
         {

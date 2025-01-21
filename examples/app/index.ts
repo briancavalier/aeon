@@ -1,13 +1,21 @@
 import { App, CfnOutput, RemovalPolicy, Stack } from 'aws-cdk-lib'
 import { AttributeType, BillingMode, StreamViewType, Table } from 'aws-cdk-lib/aws-dynamodb'
 import { EventBus } from 'aws-cdk-lib/aws-events'
-import { FunctionUrlAuthType, Runtime } from 'aws-cdk-lib/aws-lambda'
+import { ApplicationLogLevel, FunctionUrlAuthType, LoggingFormat, Runtime, SystemLogLevel } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { EventBusNotifier, EventBusSubscription } from '../../src/aws-constructs/eventbridge'
 import { EventStore } from '../../src/aws-constructs/eventstore'
 
 const commonFunctionEnv = {
   NODE_OPTIONS: '--enable-source-maps',
+}
+
+const commonFunctionProps = {
+  runtime: Runtime.NODEJS_22_X,
+  bundling: { sourceMap: true },
+  loggingFormat: LoggingFormat.JSON,
+  applicationLogLevelV2: ApplicationLogLevel.DEBUG,
+  SystemLogLevelV2: SystemLogLevel.WARN,
 }
 
 const app = new App()
@@ -37,14 +45,11 @@ new EventBusNotifier(stack, 'leaderboard-events-notifier', {
 // Leaderboard aggregate
 
 const leaderboard = new NodejsFunction(stack, `leaderboard-events-handler`, {
+  ...commonFunctionProps,
   entry: 'examples/leaderboard/index.ts',
-  runtime: Runtime.NODEJS_22_X,
   environment: {
     ...commonFunctionEnv,
-    eventStoreName: leaderboardEventStore.name
-  },
-  bundling: {
-    sourceMap: true,
+    eventStoreConfig: leaderboardEventStore.config
   }
 })
 
@@ -72,14 +77,11 @@ new EventBusNotifier(stack, 'user-profile-events-notifier', {
 // User Profile aggregate
 
 const userProfile = new NodejsFunction(stack, `user-profile-events-handler`, {
+  ...commonFunctionProps,
   entry: 'examples/user-profile/index.ts',
-  runtime: Runtime.NODEJS_22_X,
   environment: {
     ...commonFunctionEnv,
-    eventStoreName: userProfileEventStore.name
-  },
-  bundling: {
-    sourceMap: true,
+    eventStoreConfig: userProfileEventStore.config
   }
 })
 
@@ -102,14 +104,11 @@ const leaderboardView = new Table(stack, 'leaderboard-view', {
 })
 
 const update = new NodejsFunction(stack, `leaderboard-view-update`, {
+  ...commonFunctionProps,
   entry: 'examples/view/update.ts',
-  runtime: Runtime.NODEJS_22_X,
   environment: {
     ...commonFunctionEnv,
     viewTableName: leaderboardView.tableName
-  },
-  bundling: {
-    sourceMap: true,
   }
 })
 
@@ -130,14 +129,11 @@ new EventBusSubscription(stack, `leaderboard-view-user-profile-subscription`, {
 })
 
 const query = new NodejsFunction(stack, `leaderboard-view-query`, {
+  ...commonFunctionProps,
   entry: 'examples/view/query.ts',
-  runtime: Runtime.NODEJS_22_X,
   environment: {
     ...commonFunctionEnv,
     viewTableName: leaderboardView.tableName,
-  },
-  bundling: {
-    sourceMap: true,
   }
 })
 

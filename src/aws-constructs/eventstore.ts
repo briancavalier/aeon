@@ -8,6 +8,7 @@ export interface IEventStore {
   readonly name: string
   readonly eventsTable: ITable
   readonly metadataTable: ITable
+  readonly config: string
 
   grantReadEvents(g: IGrantable): void
   grantReadWriteEvents(g: IGrantable): void
@@ -29,6 +30,7 @@ export class EventStore extends Construct implements IEventStore {
   public readonly name: string
   public readonly eventsTable: ITable
   public readonly metadataTable: ITable
+  public readonly config: string
 
   protected constructor(scope: Construct, id: string, p: EventStoreProps) {
     super(scope, id)
@@ -36,6 +38,12 @@ export class EventStore extends Construct implements IEventStore {
     this.name = p.name ?? id
     this.eventsTable = p.eventsTable
     this.metadataTable = p.metadataTable
+
+    this.config = JSON.stringify({
+      name: this.name,
+      eventsTable: this.eventsTable.tableName,
+      metadataTable: this.metadataTable.tableName
+    })
   }
 
   static createTables(scope: Construct, id: string, { name = id, ...tableProps }: EventStoreTableProps) {

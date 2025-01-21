@@ -31,6 +31,6 @@ export const handleCommand = <C, S, E extends Event>(
   const appended = await append(client, events.map(data => ({ ...c, timestamp, data })), idempotencyKey)
 
   return {
-    [process.env.eventStoreName!]: appended ?? (await readKeyLatest(client, c.key))?.position
+    [client.name]: appended ?? (await readKeyLatest(client, c.key))?.position
   }
 }
