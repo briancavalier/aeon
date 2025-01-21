@@ -1,14 +1,14 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import assert from 'node:assert'
-import { append, eventStore, readKey } from '../../src/eventstore'
-import { LeaderboardEvent } from '../domain'
-import { decide, LeaderboardCommand, update } from './decide'
+import { append, createClient, readKey } from '../../src/eventstore'
+import { decide, LeaderboardCommand, update } from './command'
+import { LeaderboardEvent } from './domain'
 
 assert(process.env.eventStoreName)
 
 const client = new DynamoDBClient({})
-const store = eventStore(process.env.eventStoreName, client)
+const store = createClient(process.env.eventStoreName, client)
 
 export const handler = async (event: APIGatewayProxyEvent) => {
   const c = JSON.parse(event.body ?? '') as LeaderboardCommand

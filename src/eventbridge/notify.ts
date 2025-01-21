@@ -11,21 +11,19 @@ const eventStoreName = process.env.eventStoreName
 const client = new EventBridgeClient({ region: process.env.AWS_REGION })
 
 export const handler = ({ Records }: DynamoDBStreamEvent) => {
-  console.log(JSON.stringify(Records, null, 2))
-  const positions = Records.map(r => r.dynamodb?.Keys?.position?.S).filter((p): p is Position => !!p).sort()
+  if (Records.length === 0) return
 
-  console.debug('Notifying', positions)
+  const end = Records.reduce((end, { dynamodb }) =>
+    dynamodb?.Keys?.position?.S && dynamodb.Keys.position.S > end
+      ? dynamodb.Keys.position.S : end, '') as Position
+
+  const notification = { eventStoreName, end } satisfies Notification
+  console.debug('Notifying', notification)
 
   return client.send(new PutEventsCommand({
     Entries: [{
       EventBusName: process.env.eventBusName,
-      Detail: JSON.stringify({
-        eventStoreName,
-        range: {
-          start: positions[0],
-          end: positions[positions.length - 1]
-        }
-      } satisfies Notification),
+      Detail: JSON.stringify(notification),
       DetailType: 'appended',
       Source: eventStoreName,
     }]

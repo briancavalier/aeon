@@ -3,8 +3,12 @@ import { AttributeType, BillingMode, StreamViewType, Table } from 'aws-cdk-lib/a
 import { EventBus } from 'aws-cdk-lib/aws-events'
 import { FunctionUrlAuthType, Runtime } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
-import { EventBusNotifier, EventBusSubscriber } from '../../src/aws-constructs/eventbridge'
+import { EventBusNotifier, EventBusSubscription } from '../../src/aws-constructs/eventbridge'
 import { EventStore } from '../../src/aws-constructs/eventstore'
+
+const commonFunctionEnv = {
+  NODE_OPTIONS: '--enable-source-maps',
+}
 
 const app = new App()
 const stack = new Stack(app, 'leaderboard')
@@ -17,15 +21,15 @@ const eventBus = new EventBus(stack, 'all-events', {
 })
 
 // -------------------------------------------
-// Event store
+// Leaderboard Event store
 
-export const eventStore = EventStore.createTables(stack, 'leaderboard-events', {
+export const leaderboardEventStore = EventStore.createTables(stack, 'leaderboard-events', {
   removalPolicy: RemovalPolicy.DESTROY,
   billingMode: BillingMode.PAY_PER_REQUEST
 })
 
 new EventBusNotifier(stack, 'leaderboard-events-notifier', {
-  eventStore,
+  eventStore: leaderboardEventStore,
   eventBus
 })
 
@@ -36,16 +40,52 @@ const leaderboard = new NodejsFunction(stack, `leaderboard-events-handler`, {
   entry: 'examples/leaderboard/index.ts',
   runtime: Runtime.NODEJS_22_X,
   environment: {
-    eventStoreName: eventStore.name
+    ...commonFunctionEnv,
+    eventStoreName: leaderboardEventStore.name
   },
   bundling: {
     sourceMap: true,
   }
 })
 
-eventStore.grantReadWriteEvents(leaderboard)
+leaderboardEventStore.grantReadWriteEvents(leaderboard)
 
-const commandUrl = leaderboard.addFunctionUrl({
+const leaderboardCommandUrl = leaderboard.addFunctionUrl({
+  authType: FunctionUrlAuthType.NONE,
+})
+
+// -------------------------------------------
+// User Profile Event store
+
+export const userProfileEventStore = EventStore.createTables(stack, 'user-profile-events', {
+  removalPolicy: RemovalPolicy.DESTROY,
+  billingMode: BillingMode.PAY_PER_REQUEST
+})
+
+new EventBusNotifier(stack, 'user-profile-events-notifier', {
+  eventStore: userProfileEventStore,
+  eventBus
+})
+
+
+// -------------------------------------------
+// User Profile aggregate
+
+const userProfile = new NodejsFunction(stack, `user-profile-events-handler`, {
+  entry: 'examples/user-profile/index.ts',
+  runtime: Runtime.NODEJS_22_X,
+  environment: {
+    ...commonFunctionEnv,
+    eventStoreName: userProfileEventStore.name
+  },
+  bundling: {
+    sourceMap: true,
+  }
+})
+
+userProfileEventStore.grantReadWriteEvents(userProfile)
+
+const userProfileCommandUrl = userProfile.addFunctionUrl({
   authType: FunctionUrlAuthType.NONE,
 })
 
@@ -61,10 +101,11 @@ const leaderboardView = new Table(stack, 'leaderboard-view', {
   removalPolicy: RemovalPolicy.DESTROY
 })
 
-const update = new NodejsFunction(stack, `leaderboard-view-handler`, {
+const update = new NodejsFunction(stack, `leaderboard-view-update`, {
   entry: 'examples/view/update.ts',
   runtime: Runtime.NODEJS_22_X,
   environment: {
+    ...commonFunctionEnv,
     viewTableName: leaderboardView.tableName
   },
   bundling: {
@@ -73,17 +114,26 @@ const update = new NodejsFunction(stack, `leaderboard-view-handler`, {
 })
 
 leaderboardView.grantReadWriteData(update)
+leaderboardEventStore.grantReadEvents(update)
+userProfileEventStore.grantReadEvents(update)
 
-new EventBusSubscriber(stack, 'leaderboard-view-update', {
-  eventStore,
+new EventBusSubscription(stack, `leaderboard-view-leaderboard-subscription`, {
+  eventStore: leaderboardEventStore,
   eventBus,
-  target: update
+  subscriber: update
 })
 
-const query = new NodejsFunction(stack, `leaderboard-view-get-leaderboards-handler`, {
+new EventBusSubscription(stack, `leaderboard-view-user-profile-subscription`, {
+  eventStore: userProfileEventStore,
+  eventBus,
+  subscriber: update
+})
+
+const query = new NodejsFunction(stack, `leaderboard-view-query`, {
   entry: 'examples/view/query.ts',
   runtime: Runtime.NODEJS_22_X,
   environment: {
+    ...commonFunctionEnv,
     viewTableName: leaderboardView.tableName,
   },
   bundling: {
@@ -100,7 +150,8 @@ const queryUrl = query.addFunctionUrl({
 // -------------------------------------------
 // Outputs
 
-new CfnOutput(stack, 'commandUrl', { value: commandUrl.url })
+new CfnOutput(stack, 'leaderboardCommandUrl', { value: leaderboardCommandUrl.url })
+new CfnOutput(stack, 'userProfileCommandUrl', { value: userProfileCommandUrl.url })
 new CfnOutput(stack, 'queryUrl', { value: queryUrl.url })
 
 // -------------------------------------------

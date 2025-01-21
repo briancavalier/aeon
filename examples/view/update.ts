@@ -1,8 +1,10 @@
-import { ConditionalCheckFailedException, DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { ConditionalCheckFailedException, DynamoDBClient, TransactionCanceledException } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, PutCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import assert from 'node:assert'
-import { CompetitorAddedEvent, CompetitorScoreUpdatedEvent, LeaderboardCreatedEvent, LeaderboardEvent } from '../domain'
-import { subscriber } from './subscriber'
+import { createClient, nextPosition, Notification, read } from '../../src/eventstore'
+import { CompetitorAddedEvent, CompetitorScoreUpdatedEvent, LeaderboardCreatedEvent, LeaderboardEvent } from '../leaderboard/domain'
+import { DisplayNameUpdatedEvent, UserProfileEvent } from '../user-profile/domain'
+import { getPosition, updatePosition } from './common'
 
 assert(process.env.viewTableName)
 
@@ -10,31 +12,64 @@ const table = process.env.viewTableName
 const client = new DynamoDBClient({})
 const docClient = DynamoDBDocumentClient.from(client)
 
-export const handler = subscriber(table, client, async (event) => {
-  const data = event as LeaderboardEvent
-  switch (data.tag) {
-    case 'created': {
-      await docClient.send(putLeaderboard(table, data))
-        .catch(logConditionFailed('Ignoring idempotent event: Leaderboard exists', data))
+export const handler = async ({ eventStoreName, end }: Notification) => {
+  const store = createClient(eventStoreName, client)
 
-      break
-    }
+  const start = await getPosition(docClient, table, eventStoreName)
 
-    case 'competitor-added': {
-      await docClient.send(putCompetitor(table, data))
-        .catch(logConditionFailed('Ignoring idempotent event: Competitor exists', data))
+  console.debug('Reading events', start, end)
 
-      break
-    }
+  const events = read(store, { start: start ? nextPosition(start) : undefined, end }) //as AsyncIterable<Committed<string, string, unknown>>
 
-    case 'competitor-score-updated': {
-      await docClient.send(updateCompetitorScore(table, data))
-        .catch(logConditionFailed('Ignoring event: Competitor not found', data))
+  for await (const { data } of events) {
+    const event = data as LeaderboardEvent | UserProfileEvent
+    console.debug('Processing event', event)
 
-      break
+    switch (event.tag) {
+      case 'display-name-updated':
+        await docClient.send(updateCompetitorDisplayName(table, event))
+        break
+
+      case 'created':
+        await docClient.send(putLeaderboard(table, event))
+          .catch(logConditionFailed('Ignoring idempotent event: Leaderboard exists', event))
+        break
+
+      case 'competitor-added':
+        await docClient.send(putCompetitor(table, event))
+          .catch(logConditionFailed('Ignoring idempotent event: Competitor exists', event))
+        break
+
+      case 'competitor-score-updated':
+        await docClient.send(updateCompetitorScore(table, event))
+          .catch(logConditionFailed('Ignoring event: Competitor not found', event))
+        break
     }
   }
-})
+
+  await updatePosition(docClient, table, eventStoreName, end)
+    .catch(e => {
+      if (e.name !== 'ConditionalCheckFailedException')
+        throw e
+      console.debug('Skipping subscriber position update')
+    })
+}
+
+const updateCompetitorDisplayName = (table: string, { tag, userId, ...data }: DisplayNameUpdatedEvent) =>
+  new UpdateCommand({
+    TableName: table,
+    Key: {
+      pk: `user/${userId}`,
+      sk: 'profile'
+    },
+    UpdateExpression: 'set #displayName = :displayName',
+    ExpressionAttributeNames: {
+      '#displayName': 'displayName',
+    },
+    ExpressionAttributeValues: {
+      ':displayName': data.displayName,
+    },
+  })
 
 const putLeaderboard = (table: string, { tag, id, ...data }: LeaderboardCreatedEvent) =>
   new PutCommand({
@@ -96,7 +131,10 @@ const updateCompetitorScore = (table: string, data: CompetitorScoreUpdatedEvent)
   })
 
 const logConditionFailed = (msg: string, l: LeaderboardEvent) => (e: Error) => {
-  if (e instanceof ConditionalCheckFailedException)
-    return console.debug(msg, e)
+  if (e instanceof ConditionalCheckFailedException ||
+    (e instanceof TransactionCanceledException &&
+      e.CancellationReasons?.every(r => r.Code === 'ConditionalCheckFailed'))
+  ) return console.debug(msg, l, e)
+
   throw e
 }

@@ -10,7 +10,7 @@ export interface EventStoreClient {
   readonly nextPosition: (epochMilliseconds: number) => Position
 }
 
-export const eventStore = (eventsTable: string, client: DynamoDBClient, nextPosition?: (epochMilliseconds?: number) => Position): EventStoreClient => ({
+export const createClient = (eventsTable: string, client: DynamoDBClient, nextPosition?: (epochMilliseconds?: number) => Position): EventStoreClient => ({
   client,
   eventsTable,
   metadataTable: `${eventsTable}-metadata`,
@@ -24,12 +24,16 @@ export type Pending<K, T, D> = {
   readonly data: D
 }
 
+export type Appended = {
+  end?: Position
+}
+
 /**
  * Append events to the event store. Provide an idempotency key to ensure
  * the events are only written once even if the same request is retried.
  */
-export const append = async <const K extends string, const T extends string, const D>(es: EventStoreClient, e: readonly Pending<K, T, D>[], idempotencyKey?: string): Promise<readonly Position[]> => {
-  if (e.length === 0) return []
+export const append = async <const K extends string, const T extends string, const D>(es: EventStoreClient, e: readonly Pending<K, T, D>[], idempotencyKey?: string): Promise<Appended> => {
+  if (e.length === 0) return {}
 
   const now = Date.now()
   const items = e.map(e => {
@@ -54,8 +58,6 @@ export const append = async <const K extends string, const T extends string, con
     }
   })
 
-  const slice = getSlice(es.nextPosition(now))
-
   // TODO: TransactWriteItems supports up to 100 items. Need strategy
   // for handling larger inputs.  Options:
   // 1. Break up into multiple transactions, return more info
@@ -70,7 +72,7 @@ export const append = async <const K extends string, const T extends string, con
           TableName: es.metadataTable,
           Item: {
             pk: { S: 'slice' },
-            slice: { S: slice },
+            sk: { S: getSlice(es.nextPosition(now)) },
           }
         }
       }
@@ -79,8 +81,8 @@ export const append = async <const K extends string, const T extends string, con
   }))
 
   return (idempotencyKey && wasIdempotent(result.ConsumedCapacity ?? []))
-    ? []
-    : items.map(i => i.Put.Item.position.S as Position)
+    ? {}
+    : { end: items[items.length - 1].Put.Item.position.S }
 }
 
 export type Committed<K, T extends string, D> = Pending<K, T, D> & {
@@ -171,8 +173,8 @@ const getExtents = async (es: EventStoreClient, range: Partial<Range>): Promise<
     })),
   ])
 
-  const ps = start.Items?.[0]?.slice.S as Slice | undefined
-  const pe = end.Items?.[0]?.slice.S as Slice | undefined
+  const ps = start.Items?.[0]?.sk.S as Slice | undefined
+  const pe = end.Items?.[0]?.sk.S as Slice | undefined
 
   // Intersect range and store extents
   return {

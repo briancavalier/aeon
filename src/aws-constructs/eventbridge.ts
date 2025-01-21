@@ -40,19 +40,19 @@ export class EventBusNotifier extends Construct {
   }
 }
 
-export class EventBusSubscriber extends Construct {
+export class EventBusSubscription extends Construct {
   public readonly rule: IRule
   constructor(scope: Construct, id: string, props: {
     eventStore: IEventStore
     eventBus: IEventBus
-    target: IFunction
+    subscriber: IFunction
     eventPattern?: EventPattern
   }) {
     super(scope, id)
 
     this.rule = new Rule(this, `${id}-rule`, {
       eventBus: props.eventBus,
-      targets: [new LambdaFunction(props.target, {
+      targets: [new LambdaFunction(props.subscriber, {
         event: RuleTargetInput.fromEventPath('$.detail')
       })],
       eventPattern: props.eventPattern ?? {
@@ -60,6 +60,6 @@ export class EventBusSubscriber extends Construct {
       }
     })
 
-    props.eventStore.grantReadEvents(props.target)
+    props.eventStore.grantReadEvents(props.subscriber)
   }
 }

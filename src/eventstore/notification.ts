@@ -1,6 +1,6 @@
-import { Range } from './position'
+import { Position } from './position'
 
 export type Notification = Readonly<{
   eventStoreName: string,
-  range: Range
+  end: Position
 }>

@@ -1,9 +1,9 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { BatchGetCommand, DynamoDBDocumentClient, paginateQuery, QueryCommand } from '@aws-sdk/lib-dynamodb'
+import { BatchGetCommand, DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import assert from 'node:assert'
-import { Id } from '../domain'
-import { getCurrentRevision } from './revision'
+import { Id } from '../lib/id'
+import { getPosition } from './common'
 
 assert(process.env.viewTableName)
 
@@ -14,7 +14,7 @@ const docClient = DynamoDBDocumentClient.from(client)
 export const handler = async (event: APIGatewayProxyEvent) => {
   const { leaderboardId, userId, revision } = event.queryStringParameters ?? {}
 
-  const current = await getCurrentRevision(client, table) ?? ''
+  const current = await getPosition(client, table, 'leaderboard-events') ?? ''
 
   if (revision && revision > current)
     return retryAfter(current, revision, 5)
@@ -44,42 +44,53 @@ type Leaderboard = Readonly<{
 type Competitor = Readonly<{
   id: Id<'User'>,
   score: number,
+  displayName: string
 }>
 
 const getLeaderboard = async (leaderboardId: string): Promise<Leaderboard | undefined> => {
-  const results = paginateQuery({ client: docClient }, {
+  const { Items = [] } = await docClient.send(new QueryCommand({
     TableName: table,
     KeyConditionExpression: '#pk = :pk',
     ExpressionAttributeNames: { '#pk': 'pk' },
     ExpressionAttributeValues: {
       ':pk': `leaderboard/${leaderboardId}`
     },
-  })
+  }))
 
   let leaderboard = {} as Leaderboard
+  let competitors = [] as readonly Competitor[]
 
-  for await (const r of results) {
-    for (const item of r?.Items ?? []) {
-      if (item.sk === 'leaderboard')
-        leaderboard = {
-          ...leaderboard,
-          id: item.leaderboardId,
-          name: item.name,
-          description: item.description,
-        } as Leaderboard
-      else
-        leaderboard = {
-          ...leaderboard,
-          competitors: [
-            ...(leaderboard.competitors ?? []),
-            {
-              id: item.userId,
-              score: +(item.score ?? 0),
-            }
-          ]
-        } as Leaderboard
-    }
+  for (const item of Items) {
+    if (item.sk === 'leaderboard')
+      leaderboard = {
+        ...leaderboard,
+        id: item.leaderboardId,
+        name: item.name,
+        description: item.description,
+      } as Leaderboard
+    else
+      competitors = [
+        ...competitors,
+        {
+          id: item.userId,
+          score: +(item.score ?? 0),
+          displayName: ''
+        }
+      ]
   }
+
+  if (competitors.length === 0)
+    return { ...leaderboard, competitors }
+
+  const profiles = await getUserProfiles(competitors)
+
+  leaderboard = {
+    ...leaderboard,
+    competitors: competitors.map((competitor, i) => ({
+      ...competitor,
+      displayName: profiles[i]?.displayName ?? ''
+    }))
+  } as Leaderboard
 
   return leaderboard.id ? {
     ...leaderboard,
@@ -89,6 +100,19 @@ const getLeaderboard = async (leaderboardId: string): Promise<Leaderboard | unde
 
 const byScoreDescending = (c1: Competitor, c2: Competitor) => c2.score - c1.score
 
+const getUserProfiles = (competitors: readonly Competitor[]) =>
+  docClient.send(new BatchGetCommand({
+    RequestItems: {
+      [table]: {
+        Keys: competitors.map(({ id }) => ({
+          pk: `user/${id}`,
+          sk: 'profile'
+        }))
+      }
+    }
+  })).then(({ Responses }) => Responses?.[table] ?? [])
+
+
 type UserLeaderboard = Readonly<{
   id: Id<'Leaderboard'>,
   name: string,
@@ -96,7 +120,7 @@ type UserLeaderboard = Readonly<{
 }>
 
 const getUserLeaderboards = async (userId: string): Promise<readonly UserLeaderboard[]> => {
-  const result = await docClient.send(new QueryCommand({
+  const { Items = [] } = await docClient.send(new QueryCommand({
     TableName: table,
     KeyConditionExpression: '#pk = :pk',
     ExpressionAttributeNames: {
@@ -107,21 +131,22 @@ const getUserLeaderboards = async (userId: string): Promise<readonly UserLeaderb
     }
   }))
 
-  const leaderboards = await docClient.send(new BatchGetCommand({
+  if (Items.length === 0) return []
+
+  const { Responses = {} } = await docClient.send(new BatchGetCommand({
     RequestItems: {
       [table]: {
-        Keys: result.Items?.map(i => ({
-          pk: `leaderboard/${i.leaderboardId.S}`,
+        Keys: Items?.map(i => ({
+          pk: `leaderboard/${i.leaderboardId}`,
           sk: 'leaderboard'
         }))
       }
     }
   }))
 
-  return leaderboards.Responses?.[table]
-    .map(l => ({
-      id: l.leaderboardId,
-      name: l.name,
-      description: l.description,
-    } as UserLeaderboard)) ?? []
+  return Responses?.[table]?.map(l => ({
+    id: l.leaderboardId,
+    name: l.name,
+    description: l.description,
+  } as UserLeaderboard)) ?? []
 }

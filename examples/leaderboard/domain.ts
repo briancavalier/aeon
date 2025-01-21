@@ -1,3 +1,5 @@
+import { Id } from '../lib/id'
+
 export type LeaderboardEvent =
   | LeaderboardCreatedEvent
   | CompetitorAddedEvent
@@ -23,5 +25,3 @@ export type CompetitorScoreUpdatedEvent = Readonly<{
   userId: Id<'User'>,
   score: number
 }>
-
-export type Id<A, T = string> = T & { readonly Id: unique symbol, type: A }

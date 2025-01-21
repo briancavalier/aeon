@@ -56,7 +56,7 @@ export class EventStore extends Construct implements IEventStore {
     const metadataTable = new Table(scope, `${name}-table-metadata`, {
       tableName: `${name}-metadata`,
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-      sortKey: { name: 'slice', type: AttributeType.STRING },
+      sortKey: { name: 'sk', type: AttributeType.STRING },
       ...tableProps
     })
 

@@ -1,4 +1,5 @@
-import { Id, LeaderboardEvent } from '../domain'
+import { Id } from '../lib/id'
+import { LeaderboardEvent } from './domain'
 
 export type LeaderboardCommand =
   | Readonly<{ tag: 'create', id: Id<'Leaderboard'>, name: string, description: string }>
