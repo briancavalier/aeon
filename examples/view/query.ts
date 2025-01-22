@@ -12,9 +12,10 @@ const client = new DynamoDBClient({})
 const docClient = DynamoDBDocumentClient.from(client)
 
 export const handler = async (event: APIGatewayProxyEvent) => {
-  const { leaderboardId, userId, revision } = event.queryStringParameters ?? {}
+  const query = event.queryStringParameters ?? {}
+  console.info(query)
 
-  console.debug({ msg: 'Querying leaderboards', leaderboardId, userId, revision })
+  const { revision, leaderboardId, userId } = query
 
   const requested = parseRevision(revision)
   const current = await getRevision(client, table)
@@ -34,9 +35,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 }
 
 const parseRevision = (revision: string | undefined): Revision =>
-  revision
-    ? Object.fromEntries(revision.split(',').map(r => r.split(':')))
-    : {}
+  revision ? JSON.parse(revision) : {}
 
 const retryAfter = (current: Revision, requested: Revision, retryAfterSeconds: number) => ({
   statusCode: 202,

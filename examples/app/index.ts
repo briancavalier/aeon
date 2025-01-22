@@ -38,7 +38,8 @@ export const leaderboardEventStore = EventStore.createTables(stack, 'leaderboard
 
 new EventBusNotifier(stack, 'leaderboard-events-notifier', {
   eventStore: leaderboardEventStore,
-  eventBus
+  eventBus,
+  applicationLogLevelV2: ApplicationLogLevel.DEBUG,
 })
 
 // -------------------------------------------

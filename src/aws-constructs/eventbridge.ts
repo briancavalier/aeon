@@ -10,8 +10,8 @@ import { IEventStore } from './eventstore'
 export type EventBusNotifierProps = Readonly<{
   eventStore: IEventStore
   eventBus: IEventBus
-  applicationLogLevelV2?: ApplicationLogLevel.WARN,
-  systemLogLevelV2?: SystemLogLevel.WARN,
+  applicationLogLevelV2?: ApplicationLogLevel,
+  systemLogLevelV2?: SystemLogLevel,
 }>
 
 export class EventBusNotifier extends Construct {

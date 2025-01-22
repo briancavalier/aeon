@@ -39,11 +39,7 @@ export class EventStore extends Construct implements IEventStore {
     this.eventsTable = p.eventsTable
     this.metadataTable = p.metadataTable
 
-    this.config = JSON.stringify({
-      name: this.name,
-      eventsTable: this.eventsTable.tableName,
-      metadataTable: this.metadataTable.tableName
-    })
+    this.config = `${this.name},${this.eventsTable.tableName},${this.metadataTable.tableName}`
   }
 
   static createTables(scope: Construct, id: string, { name = id, ...tableProps }: EventStoreTableProps) {

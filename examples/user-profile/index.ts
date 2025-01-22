@@ -18,6 +18,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const body = await handleUserProfileCommand(store, {
     key: c.userId,
     type: c.type,
+    correlationId: event.queryStringParameters?.correlationId ?? event.requestContext.requestId,
     data: c
   }, event.queryStringParameters?.idempotencyKey)
 

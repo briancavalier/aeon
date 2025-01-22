@@ -18,13 +18,13 @@ export const handler = async ({ eventStoreConfig, end }: Notification) => {
   const revision = await getRevision(docClient, table)
   const start = revision[eventStoreConfig.name]
 
-  console.debug({ msg: 'Reading events', start, end })
+  console.debug({ msg: 'Reading events', start, end, revision })
 
-  const events = read(store, { start: start ? nextPosition(start) : undefined, end }) //as AsyncIterable<Committed<string, string, unknown>>
+  const events = read(store, { start: start ? nextPosition(start) : undefined, end })
 
-  for await (const { data } of events) {
+  for await (const { data, ...meta } of events) {
     const event = data as LeaderboardEvent | UserProfileEvent
-    console.debug({ msg: 'Processing event', event })
+    console.info(meta)
 
     switch (event.type) {
       case 'display-name-updated':
@@ -48,7 +48,9 @@ export const handler = async ({ eventStoreConfig, end }: Notification) => {
     }
   }
 
-  await updateRevision(docClient, table, { ...revision, [eventStoreConfig.name]: end })
+  const updated = { ...revision, [eventStoreConfig.name]: end }
+  await updateRevision(docClient, table, updated)
+  console.debug({ msg: 'Updated revision', previous: revision, updated })
 }
 
 const updateCompetitorDisplayName = (table: string, { type, userId, ...data }: DisplayNameUpdatedEvent) =>

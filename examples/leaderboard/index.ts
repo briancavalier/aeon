@@ -18,6 +18,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const body = await handleLeaderboardCommand(store, {
     key: c.id,
     type: c.type,
+    correlationId: event.queryStringParameters?.correlationId ?? event.requestContext.requestId,
     data: c
   }, event.queryStringParameters?.idempotencyKey)
 

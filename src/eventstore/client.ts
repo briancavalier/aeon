@@ -29,12 +29,11 @@ export const fromConfigString = (configString: string, client: DynamoDBClient, n
 
 export const parseConfig = (configString: string): EventStoreConfig => {
   try {
-    const config = JSON.parse(configString)
-    assert(config)
-    assert(typeof config.name === 'string', 'name must be a string')
-    assert(typeof config.eventsTable === 'string', 'eventsTable must be a string')
-    assert(typeof config.metadataTable === 'string', 'metadataTable must be a string')
-    return config
+    const [name, eventsTable, metadataTable] = configString.split(',')
+    assert(typeof name === 'string', 'name must be a string')
+    assert(typeof eventsTable === 'string', 'eventsTable must be a string')
+    assert(typeof metadataTable === 'string', 'metadataTable must be a string')
+    return { name, eventsTable, metadataTable }
   } catch (e) {
     throw new Error(`Invalid configString: ${configString}`, { cause: e })
   }
@@ -44,6 +43,7 @@ export type Pending<D> = {
   readonly key: string
   readonly type: string
   readonly timestamp: string // RFC3339 UTC datetime
+  readonly correlationId?: string
   readonly data: D
 }
 
@@ -64,6 +64,7 @@ export const append = async <const D>(es: EventStoreClient, e: readonly Pending<
           slice: { S: getSlice(position) },
           key: { S: e.key },
           timestamp: { S: e.timestamp },
+          correlationId: { S: e.correlationId ?? position },
           position: { S: position },
           type: { S: e.type },
           data: { S: JSON.stringify(e.data) }
@@ -236,6 +237,7 @@ const toEvent = (item: Record<string, AttributeValue>): Committed<unknown> => ({
   key: item.key.S,
   type: item.type.S,
   position: item.position.S,
+  correlationId: item.correlationId.S,
   timestamp: item.timestamp.S,
   data: JSON.parse(item.data.S as string)
 } as Committed<unknown>)
