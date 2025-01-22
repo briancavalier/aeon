@@ -1,7 +1,7 @@
 import { ConditionalCheckFailedException, DynamoDBClient, TransactionCanceledException } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, PutCommand, TransactWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import assert from 'node:assert'
-import { fromConfig, Notification } from '../../src/eventstore'
+import { fromConfig, Notification } from '../../../src/eventstore'
 import { CompetitorAddedEvent, CompetitorScoreUpdatedEvent, LeaderboardCreatedEvent, LeaderboardEvent } from '../leaderboard/domain'
 import { DisplayNameUpdatedEvent, UserProfileEvent } from '../user-profile/domain'
 import { getRevision, readAfterRevision, updateRevision } from './revision'
@@ -13,11 +13,14 @@ const client = new DynamoDBClient({})
 const docClient = DynamoDBDocumentClient.from(client)
 
 export const handler = async ({ eventStoreConfig, end }: Notification) => {
+  console.debug({ eventStoreConfig, end })
   const store = fromConfig(eventStoreConfig, client)
 
   const revision = await getRevision(client, table)
+  console.debug({ eventStoreConfig, end, revision })
 
   const events = await readAfterRevision(store, revision, end)
+  console.debug({ eventStoreConfig, end, revision, events })
 
   for await (const { data, ...meta } of events) {
     const event = data as LeaderboardEvent | UserProfileEvent

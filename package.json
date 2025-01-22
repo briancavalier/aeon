@@ -11,12 +11,22 @@
     "type": "git",
     "url": "https://github.com/briancavalier/aeon.git"
   },
+  "exports": {
+    ".": {
+      "import": "./dist/mjs/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./aws-cdk/": {
+      "import": "./dist/esm/aws-cdk/index.js",
+      "require": "./dist/cjs/aws-cdk/index.js"
+    }
+  },
   "scripts": {
-    "build": "tsc --project ./tsconfig.build.json --incremental --tsBuildInfoFile dist/.tsbuildinfo",
-    "deploy": "npx cdk deploy",
-    "destroy": "npx cdk destroy",
-    "typecheck": "tsc --noEmit",
-    "test": "npx tsx --experimental-test-coverage --test-coverage-exclude **/*.test.ts --test src/**/*.test.ts"
+    "build": "npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc --project ./tsconfig.build-esm.json --incremental --tsBuildInfoFile dist/esm/.tsbuildinfo",
+    "build:cjs": "tsc --project ./tsconfig.build-cjs.json --incremental --tsBuildInfoFile dist/cjs/.tsbuildinfo",
+    "test": "npx tsx --experimental-test-coverage --test-coverage-exclude **/*.test.ts --test src/**/*.test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@aws-sdk/client-dynamodb": "^3.724.0",

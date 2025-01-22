@@ -2,8 +2,8 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { BatchGetCommand, DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import assert from 'node:assert'
-import { Id } from '../lib/id'
-import { hasSeenRevision, Revision } from '../lib/revision'
+import { Id } from '../../lib/id'
+import { hasSeenRevision, Revision } from '../../lib/revision'
 import { getRevision } from './revision'
 
 assert(process.env.viewTableName)

@@ -3,8 +3,7 @@ import { AttributeType, BillingMode, StreamViewType, Table } from 'aws-cdk-lib/a
 import { EventBus } from 'aws-cdk-lib/aws-events'
 import { ApplicationLogLevel, FunctionUrlAuthType, LoggingFormat, Runtime, SystemLogLevel } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
-import { EventBusNotifier, EventBusSubscription } from '../../src/aws-constructs/eventbridge'
-import { EventStore } from '../../src/aws-constructs/eventstore'
+import { EventBusNotifier, EventBusSubscription, EventStore } from '../../src/aws-cdk'
 
 const commonFunctionEnv = {
   NODE_OPTIONS: '--enable-source-maps',
@@ -47,7 +46,7 @@ new EventBusNotifier(stack, 'leaderboard-events-notifier', {
 
 const leaderboard = new NodejsFunction(stack, `leaderboard-events-handler`, {
   ...commonFunctionProps,
-  entry: 'examples/leaderboard/index.ts',
+  entry: 'examples/leaderboards/leaderboard/index.ts',
   environment: {
     ...commonFunctionEnv,
     eventStoreConfig: leaderboardEventStore.config
@@ -79,7 +78,7 @@ new EventBusNotifier(stack, 'user-profile-events-notifier', {
 
 const userProfile = new NodejsFunction(stack, `user-profile-events-handler`, {
   ...commonFunctionProps,
-  entry: 'examples/user-profile/index.ts',
+  entry: 'examples/leaderboards/user-profile/index.ts',
   environment: {
     ...commonFunctionEnv,
     eventStoreConfig: userProfileEventStore.config
@@ -106,7 +105,7 @@ const leaderboardView = new Table(stack, 'leaderboard-view', {
 
 const update = new NodejsFunction(stack, `leaderboard-view-update`, {
   ...commonFunctionProps,
-  entry: 'examples/view/update.ts',
+  entry: 'examples/leaderboards/view/update.ts',
   environment: {
     ...commonFunctionEnv,
     viewTableName: leaderboardView.tableName
@@ -131,7 +130,7 @@ new EventBusSubscription(stack, `leaderboard-view-user-profile-subscription`, {
 
 const query = new NodejsFunction(stack, `leaderboard-view-query`, {
   ...commonFunctionProps,
-  entry: 'examples/view/query.ts',
+  entry: 'examples/leaderboards/view/query.ts',
   environment: {
     ...commonFunctionEnv,
     viewTableName: leaderboardView.tableName,

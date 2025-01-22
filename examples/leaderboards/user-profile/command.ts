@@ -1,4 +1,4 @@
-import { Id } from '../lib/id'
+import { Id } from '../../lib/id'
 import { UserProfileEvent } from './domain'
 
 export type UserProfileCommand =

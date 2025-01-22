@@ -1,6 +1,6 @@
 import { DynamoDBClient, GetItemCommand, PutItemCommand } from '@aws-sdk/client-dynamodb'
-import { EventStoreClient, Position, read } from '../../src/eventstore'
-import { Revision } from '../lib/revision'
+import { EventStoreClient, Position, read } from '../../../src/eventstore'
+import { Revision } from '../../lib/revision'
 
 /**
  * Get the current {@link Revision} from the view table.
@@ -35,4 +35,4 @@ export const updateRevision = (ddb: DynamoDBClient, table: string, revision: Rev
  * end {@link Position}.
  */
 export const readAfterRevision = async (c: EventStoreClient, { [c.name]: start }: Revision, end: Position) =>
-  start < end ? read(c, { start, startExclusive: true, end }) : []
+  read(c, { start, startExclusive: true, end })
