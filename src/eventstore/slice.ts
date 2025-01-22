@@ -3,7 +3,7 @@ import { Position } from './position'
 
 export type Slice = string & { readonly type: 'Slice' }
 
-const sliceLen = 5
+export const sliceLen = 5
 
 export const getSlice = (p: Position): Slice =>
   p.slice(0, sliceLen) as Slice

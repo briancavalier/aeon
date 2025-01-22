@@ -1,7 +1,7 @@
 import { AttributeValue, DynamoDBClient, paginateQuery, QueryCommand, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
 import assert from 'node:assert'
 import { monotonicFactory, } from 'ulid'
-import { Position, Range } from './position'
+import { ensureInclusive, Position, Range } from './position'
 import { getSlice, Slice, sliceEnd, slices, sliceStart } from './slice'
 
 export interface EventStoreClient {
@@ -115,9 +115,9 @@ export type Committed<D> = Pending<D> & {
  * start will read from the beginning, and ommitting end will read to end of the
  * event store.  Omit range entirely to read all events.
  */
-export async function* read(es: EventStoreClient, range: Partial<Range> = {}): AsyncIterable<Committed<unknown>> {
+export async function* read(es: EventStoreClient, r: Partial<Range> = {}): AsyncIterable<Committed<unknown>> {
   // TODO: Blindly calling getExtents here is inefficient
-  const extents = await getExtents(es, range)
+  const extents = await getExtents(es, ensureInclusive(r))
   const start = getSlice(extents.start)
   const end = getSlice(extents.end)
 
@@ -147,7 +147,9 @@ export async function* read(es: EventStoreClient, range: Partial<Range> = {}): A
  * and omitting start will read from the beginning, and ommitting end will read to
  * end of the event store.  Omit range entirely to read all events for the specified key.
  */
-export async function* readKey(es: EventStoreClient, key: string, { start, end }: Partial<Range> = {}): AsyncIterable<Committed<unknown>> {
+export async function* readKey(es: EventStoreClient, key: string, r: Partial<Range> = {}): AsyncIterable<Committed<unknown>> {
+  const { start, end } = ensureInclusive(r)
+
   const results = paginateQuery(es,
     {
       TableName: es.eventsTable,

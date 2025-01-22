@@ -3,7 +3,8 @@ import { BatchGetCommand, DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import assert from 'node:assert'
 import { Id } from '../lib/id'
-import { getRevision, hasSeenRevision, Revision } from './revision'
+import { hasSeenRevision, Revision } from '../lib/revision'
+import { getRevision } from './revision'
 
 assert(process.env.viewTableName)
 
@@ -55,6 +56,8 @@ type Competitor = Readonly<{
   score: number,
   displayName: string
 }>
+
+const byScoreDescending = (c1: Competitor, c2: Competitor) => c2.score - c1.score
 
 const getLeaderboard = async (leaderboardId: string): Promise<Leaderboard | undefined> => {
   const { Items = [] } = await docClient.send(new QueryCommand({
@@ -108,8 +111,6 @@ const getLeaderboard = async (leaderboardId: string): Promise<Leaderboard | unde
     competitors: leaderboard.competitors?.toSorted(byScoreDescending) ?? []
   } : undefined
 }
-
-const byScoreDescending = (c1: Competitor, c2: Competitor) => c2.score - c1.score
 
 const getUserProfiles = (competitors: readonly Competitor[]) =>
   docClient.send(new BatchGetCommand({

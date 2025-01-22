@@ -14,7 +14,8 @@
   "scripts": {
     "build": "npx cdk synth",
     "deploy": "npx cdk deploy",
-    "destroy": "npx cdk destroy"
+    "destroy": "npx cdk destroy",
+    "test": "npx tsx --experimental-test-coverage --test-coverage-exclude **/*.test.ts --test src/**/*.test.ts"
   },
   "devDependencies": {
     "@aws-sdk/client-dynamodb": "^3.724.0",
