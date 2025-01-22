@@ -1,5 +1,5 @@
 import { AttributeValue, DynamoDBClient, paginateQuery, QueryCommand, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
-import assert from 'node:assert'
+import { ok as assert } from 'node:assert'
 import { monotonicFactory, } from 'ulid'
 import { ensureInclusive, Position, Range } from './position'
 import { getSlice, Slice, sliceEnd, slices, sliceStart } from './slice'

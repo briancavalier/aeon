@@ -1,11 +1,24 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "lib": ["es2023",],
-    "target": "es2023",
-    "module": "commonjs",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "skipLibCheck": true
-  }
+    "rootDir": "src",
+    "outDir": "dist",
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "lib": [
+      "ESNext",
+      "ESNext.Array"
+    ],
+    "checkJs": false,
+    "allowJs": false,
+    "declaration": true,
+    "declarationMap": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true
+  },
+  "include": [
+    "src/**/*.ts"
+  ]
 }

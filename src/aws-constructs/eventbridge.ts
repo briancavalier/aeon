@@ -4,7 +4,7 @@ import { ApplicationLogLevel, IFunction, LoggingFormat, Runtime, StartingPositio
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { Construct } from 'constructs'
-import path from 'node:path'
+import { resolve } from 'node:path'
 import { IEventStore } from './eventstore'
 
 export type EventBusNotifierProps = Readonly<{
@@ -27,7 +27,7 @@ export class EventBusNotifier extends Construct {
 
     const notify = this.notify = new NodejsFunction(scope, `${id}-handler`, {
       // FIXME: How to use import.meta.dirname here?
-      entry: path.resolve(__dirname, './notify.ts'),
+      entry: resolve(__dirname, './notify.ts'),
       runtime: Runtime.NODEJS_22_X,
       loggingFormat: LoggingFormat.JSON,
       applicationLogLevelV2,

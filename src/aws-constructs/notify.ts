@@ -1,6 +1,6 @@
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge'
 import { DynamoDBStreamEvent } from 'aws-lambda'
-import assert from 'node:assert'
+import { ok as assert } from 'node:assert'
 import { parseConfig } from '../eventstore'
 
 assert(process.env.eventStoreConfig)

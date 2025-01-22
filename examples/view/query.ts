@@ -72,7 +72,7 @@ const getLeaderboard = async (leaderboardId: string): Promise<Leaderboard | unde
   if (Items.length === 0) return undefined
 
   let leaderboard = {} as Leaderboard
-  let competitors = [] as readonly Competitor[]
+  let competitors = [] as Competitor[]
 
   for (const item of Items) {
     if (item.sk === 'leaderboard')
@@ -81,7 +81,7 @@ const getLeaderboard = async (leaderboardId: string): Promise<Leaderboard | unde
         id: item.leaderboardId,
         name: item.name,
         description: item.description,
-      } as Leaderboard
+      }
     else
       competitors = [
         ...competitors,
@@ -104,11 +104,11 @@ const getLeaderboard = async (leaderboardId: string): Promise<Leaderboard | unde
       ...competitor,
       displayName: profiles[i]?.displayName ?? ''
     }))
-  } as Leaderboard
+  }
 
   return leaderboard.id ? {
     ...leaderboard,
-    competitors: leaderboard.competitors?.toSorted(byScoreDescending) ?? []
+    competitors: leaderboard.competitors.toSorted(byScoreDescending)
   } : undefined
 }
 

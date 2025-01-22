@@ -12,9 +12,10 @@
     "url": "https://github.com/briancavalier/aeon.git"
   },
   "scripts": {
-    "build": "npx cdk synth",
+    "build": "tsc --project ./tsconfig.build.json --incremental --tsBuildInfoFile dist/.tsbuildinfo",
     "deploy": "npx cdk deploy",
     "destroy": "npx cdk destroy",
+    "typecheck": "tsc --noEmit",
     "test": "npx tsx --experimental-test-coverage --test-coverage-exclude **/*.test.ts --test src/**/*.test.ts"
   },
   "devDependencies": {
