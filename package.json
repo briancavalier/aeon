@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@aws-sdk/client-dynamodb": "^3.724.0",
-    "@aws-sdk/client-eventbridge": "^3.723.0",
+    "@aws-sdk/client-eventbridge": "^3.731.1",
     "@aws-sdk/client-sns": "^3.723.0",
     "@aws-sdk/lib-dynamodb": "^3.731.1",
     "@types/aws-lambda": "^8.10.147",
