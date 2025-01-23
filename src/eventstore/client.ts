@@ -8,6 +8,7 @@ export interface EventStoreClient {
   readonly name: string
   readonly eventsTable: string
   readonly metadataTable: string
+  readonly byKeyPositionIndexName: string
   readonly client: DynamoDBClient
   readonly nextPosition: (epochMilliseconds: number) => Position
 }
@@ -16,6 +17,7 @@ export type EventStoreConfig = {
   readonly name: string,
   readonly eventsTable: string
   readonly metadataTable: string
+  readonly byKeyPositionIndexName: string
 }
 
 export const fromConfig = (config: EventStoreConfig, client: DynamoDBClient, nextPosition?: (epochMilliseconds?: number) => Position): EventStoreClient => ({
@@ -29,11 +31,12 @@ export const fromConfigString = (configString: string, client: DynamoDBClient, n
 
 export const parseConfig = (configString: string): EventStoreConfig => {
   try {
-    const [name, eventsTable, metadataTable] = configString.split(',')
+    const [name, eventsTable, metadataTable, byKeyPositionIndexName] = configString.split(',')
     assert(typeof name === 'string', 'name must be a string')
     assert(typeof eventsTable === 'string', 'eventsTable must be a string')
     assert(typeof metadataTable === 'string', 'metadataTable must be a string')
-    return { name, eventsTable, metadataTable }
+    assert(typeof byKeyPositionIndexName === 'string', 'byKeyPositionIndexName must be a string')
+    return { name, eventsTable, metadataTable, byKeyPositionIndexName }
   } catch (e) {
     throw new Error(`Invalid configString: ${configString}`, { cause: e })
   }
@@ -158,7 +161,7 @@ export async function* readKey<A>(es: EventStoreClient, key: string, r: Partial<
   const results = paginateQuery(es,
     {
       TableName: es.eventsTable,
-      IndexName: `${es.eventsTable}-by-key-position`,
+      IndexName: es.byKeyPositionIndexName,
       KeyConditionExpression: `#key = :key ${start && end ? 'AND #position between :start AND :end'
         : start ? 'AND #position >= :start'
           : end ? 'AND #position <= :end'
@@ -185,7 +188,7 @@ export async function* readKey<A>(es: EventStoreClient, key: string, r: Partial<
 export const readKeyLatest = async <A>(es: EventStoreClient, key: string): Promise<Committed<A> | undefined> => {
   const { Items = [] } = await es.client.send(new QueryCommand({
     TableName: es.eventsTable,
-    IndexName: `${es.eventsTable}-by-key-position`,
+    IndexName: es.byKeyPositionIndexName,
     KeyConditionExpression: '#key = :key',
     ExpressionAttributeNames: { '#key': 'key' },
     ExpressionAttributeValues: { ':key': { S: key } },

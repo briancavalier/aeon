@@ -14,33 +14,23 @@ export interface IEventStore {
   grantReadWriteEvents(g: IGrantable): void
 }
 
-export type EventStoreTableProps = {
+export type EventStoreProps = {
   readonly removalPolicy?: RemovalPolicy,
   readonly billingMode?: BillingMode
-}
-
-export type EventStoreProps = {
-  readonly eventsTable: ITable
-  readonly metadataTable: ITable
 }
 
 export class EventStore extends Construct implements IEventStore {
   public readonly name: string
   public readonly eventsTable: ITable
+  public readonly byKeyPositionIndexName = 'by-key-position'
   public readonly metadataTable: ITable
   public readonly config: string
 
-  protected constructor(scope: Construct, id: string, p: EventStoreProps) {
+  constructor(scope: Construct, id: string, tableProps: EventStoreProps) {
     super(scope, id)
 
     this.name = id
-    this.eventsTable = p.eventsTable
-    this.metadataTable = p.metadataTable
 
-    this.config = `${this.name},${this.eventsTable.tableName},${this.metadataTable.tableName}`
-  }
-
-  static createTables(scope: Construct, id: string, tableProps: EventStoreTableProps) {
     const eventsTable = new Table(scope, `${id}-table`, {
       partitionKey: { name: 'slice', type: AttributeType.STRING },
       sortKey: { name: 'position', type: AttributeType.STRING },
@@ -49,7 +39,7 @@ export class EventStore extends Construct implements IEventStore {
     })
 
     eventsTable.addGlobalSecondaryIndex({
-      indexName: `${id}-by-key-position`,
+      indexName: this.byKeyPositionIndexName,
       partitionKey: { name: 'key', type: AttributeType.STRING },
       sortKey: { name: 'position', type: AttributeType.STRING }
     })
@@ -60,11 +50,10 @@ export class EventStore extends Construct implements IEventStore {
       ...tableProps
     })
 
-    return new EventStore(scope, id, { eventsTable, metadataTable })
-  }
+    this.eventsTable = eventsTable
+    this.metadataTable = metadataTable
 
-  static fromTables = (scope: Construct, id: string, p: EventStoreProps): EventStore => {
-    return new EventStore(scope, id, p)
+    this.config = `${this.name},${this.eventsTable.tableName},${this.metadataTable.tableName},${this.byKeyPositionIndexName}`
   }
 
   grantReadEvents(g: IGrantable) {
