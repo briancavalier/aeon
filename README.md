@@ -4,20 +4,20 @@ DynamoDB Event Store
 
 1. [Examples](#examples)
 
-# Examples
+## Examples
 
 1. [How to deploy](#how-to-deploy)
 1. [Examples](#examples)
    1. [Counter](#counter) - simple counters with event sourcing and CQRS
    1. [Leaderboards](#leaderboards) - more involved example of leaderboards, scores, and user profiles
 
-## How to deploy
+### How to deploy
 
-### Prerequisites
+#### Prerequisites
 
 1. AWS account where you can deploy applications
 
-### Deploying an example
+#### Deploying an example
 
 1. Ensure your AWS credentials are setup for the AWS environment where you want to deploy the example
 2. `cd <example dir>`
@@ -25,15 +25,13 @@ DynamoDB Event Store
 
 The example will be deployed to your AWS account
 
-### Destroying an example
+#### Destroying an example
 
 1. Ensure your AWS credentials are setup for the AWS environment where you want to deploy the example
 2. `cd <example dir>`
 3. `npx cdk destroy`
 
 The example will be removed from your AWS account
-
-## Examples
 
 ### Counter
 
