@@ -7,7 +7,7 @@ DynamoDB Event Store
 ## Examples
 
 1. [How to deploy](#how-to-deploy)
-1. [Examples](#examples)
+1. Examples
    1. [Counter](#counter) - simple counters with event sourcing and CQRS
    1. [Leaderboards](#leaderboards) - more involved example of leaderboards, scores, and user profiles
 
