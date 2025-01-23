@@ -118,6 +118,9 @@ export type Committed<D> = Pending<D> & {
 export async function* read<A>(es: EventStoreClient, r: Partial<Range> = {}): AsyncIterable<Committed<A>> {
   // TODO: Blindly calling getExtents here is inefficient
   const extents = await getExtents(es, ensureInclusive(r))
+
+  if (extents.start > extents.end) return
+
   const start = getSlice(extents.start)
   const end = getSlice(extents.end)
 
@@ -149,6 +152,8 @@ export async function* read<A>(es: EventStoreClient, r: Partial<Range> = {}): As
  */
 export async function* readKey<A>(es: EventStoreClient, key: string, r: Partial<Range> = {}): AsyncIterable<Committed<A>> {
   const { start, end } = ensureInclusive(r)
+
+  if (start && end && start > end) return
 
   const results = paginateQuery(es,
     {
