@@ -8,8 +8,8 @@ assert(process.env.viewTable)
 const viewTable = process.env.viewTable
 const docClient = DynamoDBDocumentClient.from(new DynamoDBClient({}))
 
-// This Query answers the same question as the on in
-// counter/query.ts.  However, it can directly get the answer
+// This Query answers the same question as the one in
+// counter/query.ts. sHowever, it directly answers queries
 // from the view table, rather than having to rebuild it
 // from all the events.
 export const handler = async (event: APIGatewayProxyEvent) => {
@@ -17,7 +17,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   if (!key) return { statusCode: 400, body: 'key is required' }
 
-  // Handle =eventual consistency
+  // Handle eventual consistency
   // If the caller specific a particular revision, and we haven't
   // seen that revision yet, we can't answer the question yet.
   // Tell the caller to try again later.
