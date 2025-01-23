@@ -1,21 +1,10 @@
 import { App, CfnOutput, RemovalPolicy, Stack } from 'aws-cdk-lib'
 import { AttributeType, BillingMode, StreamViewType, Table } from 'aws-cdk-lib/aws-dynamodb'
 import { EventBus } from 'aws-cdk-lib/aws-events'
-import { ApplicationLogLevel, FunctionUrlAuthType, LoggingFormat, Runtime, SystemLogLevel } from 'aws-cdk-lib/aws-lambda'
+import { ApplicationLogLevel, FunctionUrlAuthType } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { EventBusNotifier, EventBusSubscription, EventStore } from '../../src/aws-cdk'
-
-const commonFunctionEnv = {
-  NODE_OPTIONS: '--enable-source-maps',
-}
-
-const commonFunctionProps = {
-  runtime: Runtime.NODEJS_22_X,
-  bundling: { sourceMap: true },
-  loggingFormat: LoggingFormat.JSON,
-  applicationLogLevelV2: ApplicationLogLevel.DEBUG,
-  SystemLogLevelV2: SystemLogLevel.WARN,
-}
+import { commonFunctionEnv, commonFunctionProps } from '../aws-defaults'
 
 const app = new App()
 const stack = new Stack(app, 'leaderboard')
@@ -46,7 +35,7 @@ new EventBusNotifier(stack, 'leaderboard-events-notifier', {
 
 const leaderboard = new NodejsFunction(stack, `leaderboard-events-handler`, {
   ...commonFunctionProps,
-  entry: 'examples/leaderboards/leaderboard/index.ts',
+  entry: 'leaderboard/index.ts',
   environment: {
     ...commonFunctionEnv,
     eventStoreConfig: leaderboardEventStore.config
@@ -78,7 +67,7 @@ new EventBusNotifier(stack, 'user-profile-events-notifier', {
 
 const userProfile = new NodejsFunction(stack, `user-profile-events-handler`, {
   ...commonFunctionProps,
-  entry: 'examples/leaderboards/user-profile/index.ts',
+  entry: 'user-profile/index.ts',
   environment: {
     ...commonFunctionEnv,
     eventStoreConfig: userProfileEventStore.config
@@ -105,7 +94,7 @@ const leaderboardView = new Table(stack, 'leaderboard-view', {
 
 const update = new NodejsFunction(stack, `leaderboard-view-update`, {
   ...commonFunctionProps,
-  entry: 'examples/leaderboards/view/update.ts',
+  entry: 'view/update.ts',
   environment: {
     ...commonFunctionEnv,
     viewTableName: leaderboardView.tableName
@@ -130,7 +119,7 @@ new EventBusSubscription(stack, `leaderboard-view-user-profile-subscription`, {
 
 const query = new NodejsFunction(stack, `leaderboard-view-query`, {
   ...commonFunctionProps,
-  entry: 'examples/leaderboards/view/query.ts',
+  entry: 'view/query.ts',
   environment: {
     ...commonFunctionEnv,
     viewTableName: leaderboardView.tableName,

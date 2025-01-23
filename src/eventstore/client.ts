@@ -115,7 +115,7 @@ export type Committed<D> = Pending<D> & {
  * start will read from the beginning, and ommitting end will read to end of the
  * event store.  Omit range entirely to read all events.
  */
-export async function* read(es: EventStoreClient, r: Partial<Range> = {}): AsyncIterable<Committed<unknown>> {
+export async function* read<A>(es: EventStoreClient, r: Partial<Range> = {}): AsyncIterable<Committed<A>> {
   // TODO: Blindly calling getExtents here is inefficient
   const extents = await getExtents(es, ensureInclusive(r))
   const start = getSlice(extents.start)
@@ -138,7 +138,7 @@ export async function* read(es: EventStoreClient, r: Partial<Range> = {}): Async
       })
 
     for await (const { Items = [] } of results)
-      yield* Items.map(toEvent)
+      yield* Items.map(toEvent<A>)
   }
 }
 
@@ -147,7 +147,7 @@ export async function* read(es: EventStoreClient, r: Partial<Range> = {}): Async
  * and omitting start will read from the beginning, and ommitting end will read to
  * end of the event store.  Omit range entirely to read all events for the specified key.
  */
-export async function* readKey(es: EventStoreClient, key: string, r: Partial<Range> = {}): AsyncIterable<Committed<unknown>> {
+export async function* readKey<A>(es: EventStoreClient, key: string, r: Partial<Range> = {}): AsyncIterable<Committed<A>> {
   const { start, end } = ensureInclusive(r)
 
   const results = paginateQuery(es,
@@ -170,14 +170,14 @@ export async function* readKey(es: EventStoreClient, key: string, r: Partial<Ran
     })
 
   for await (const { Items = [] } of results)
-    yield* Items.map(toEvent)
+    yield* Items.map(toEvent<A>)
 }
 
 /**
  * Read the most recent event for the provided key. This can be
  * useful to peek at the latest event or position for a key.
  */
-export const readKeyLatest = async <K extends string>(es: EventStoreClient, key: K): Promise<Committed<unknown> | undefined> => {
+export const readKeyLatest = async <A>(es: EventStoreClient, key: string): Promise<Committed<A> | undefined> => {
   const { Items = [] } = await es.client.send(new QueryCommand({
     TableName: es.eventsTable,
     IndexName: `${es.eventsTable}-by-key-position`,
@@ -188,7 +188,7 @@ export const readKeyLatest = async <K extends string>(es: EventStoreClient, key:
     ScanIndexForward: false
   }))
 
-  return Items[0] && toEvent(Items[0])
+  return Items[0] && toEvent<A>(Items[0])
 }
 
 const getExtents = async (es: EventStoreClient, range: Partial<Range>): Promise<Range> => {
@@ -234,7 +234,7 @@ const getEnd = (p1: Position | undefined, p2: Position | undefined): Position =>
   return p1 ?? p2 ?? positionMax
 }
 
-const toEvent = (item: Record<string, AttributeValue>): Committed<unknown> => ({
+const toEvent = <A>(item: Record<string, AttributeValue>): Committed<A> => ({
   slice: item.slice.S,
   key: item.key.S,
   type: item.type.S,
@@ -242,7 +242,7 @@ const toEvent = (item: Record<string, AttributeValue>): Committed<unknown> => ({
   correlationId: item.correlationId.S,
   timestamp: item.timestamp.S,
   data: JSON.parse(item.data.S as string)
-} as Committed<unknown>)
+} as Committed<A>)
 
 const wasIdempotent = (consumedCapacity: readonly { readonly CapacityUnits?: number }[]): boolean =>
   0 === consumedCapacity.reduce(

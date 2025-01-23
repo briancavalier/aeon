@@ -1,9 +1,9 @@
-import { Position } from '../../src/eventstore'
+import { Position } from '../../../src/eventstore'
 
 /**
  * A compound revision from multiple event stores.
  */
-export type Revision = Record<string, Position>
+export type Revision = Readonly<Record<string, Position>>
 
 /**
  * A `requested` {@link Revision} has been seen iff all its Position values

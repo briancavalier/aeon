@@ -1,6 +1,6 @@
 import { DynamoDBClient, GetItemCommand, PutItemCommand } from '@aws-sdk/client-dynamodb'
 import { EventStoreClient, Position, read } from '../../../src/eventstore'
-import { Revision } from '../../lib/revision'
+import { Revision } from '../lib/revision'
 
 /**
  * Get the current {@link Revision} from the view table.

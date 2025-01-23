@@ -25,7 +25,7 @@
     "build": "npm run build:esm && npm run build:cjs",
     "build:esm": "tsc --project ./tsconfig.build-esm.json --incremental --tsBuildInfoFile dist/esm/.tsbuildinfo",
     "build:cjs": "tsc --project ./tsconfig.build-cjs.json --incremental --tsBuildInfoFile dist/cjs/.tsbuildinfo",
-    "test": "npx tsx --experimental-test-coverage --test-coverage-exclude **/*.test.ts --test src/**/*.test.ts",
+    "test": "npx tsx --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

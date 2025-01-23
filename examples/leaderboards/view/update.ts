@@ -13,11 +13,9 @@ const client = new DynamoDBClient({})
 const docClient = DynamoDBDocumentClient.from(client)
 
 export const handler = async ({ eventStoreConfig, end }: Notification) => {
-  console.debug({ eventStoreConfig, end })
   const store = fromConfig(eventStoreConfig, client)
 
   const revision = await getRevision(client, table)
-  console.debug({ eventStoreConfig, end, revision })
 
   const events = await readAfterRevision(store, revision, end)
   console.debug({ eventStoreConfig, end, revision, events })

@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert'
 import { describe, it } from 'node:test'
-import { Position } from '../../src/eventstore'
+import { Position } from '../../../src/eventstore'
 import { hasSeenRevision, Revision } from './revision'
 describe(hasSeenRevision.name, () => {
   it('given current revision has seen the requested revision, returns true', () => {
