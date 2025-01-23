@@ -16,7 +16,7 @@ export class CounterStack extends Stack {
     // -------------------------------------------
     // Event store
 
-    const counterEventStore = this.eventStore = EventStore.createTables(this, 'counter-events', {
+    const counterEventStore = this.eventStore = new EventStore(this, 'counter-events', {
       removalPolicy: RemovalPolicy.DESTROY,
       billingMode: BillingMode.PAY_PER_REQUEST
     })

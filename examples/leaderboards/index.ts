@@ -19,7 +19,7 @@ const eventBus = new EventBus(stack, 'all-events', {
 // -------------------------------------------
 // Leaderboard Event store
 
-export const leaderboardEventStore = EventStore.createTables(stack, 'leaderboard-events', {
+export const leaderboardEventStore = new EventStore(stack, 'leaderboard-events', {
   removalPolicy: RemovalPolicy.DESTROY,
   billingMode: BillingMode.PAY_PER_REQUEST
 })
@@ -51,7 +51,7 @@ const leaderboardCommandUrl = leaderboard.addFunctionUrl({
 // -------------------------------------------
 // User Profile Event store
 
-export const userProfileEventStore = EventStore.createTables(stack, 'user-profile-events', {
+export const userProfileEventStore = new EventStore(stack, 'user-profile-events', {
   removalPolicy: RemovalPolicy.DESTROY,
   billingMode: BillingMode.PAY_PER_REQUEST
 })
