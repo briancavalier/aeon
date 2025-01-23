@@ -7,17 +7,18 @@ import { CounterEvent } from './domain'
 assert(process.env.eventStoreConfig)
 const store = fromConfigString(process.env.eventStoreConfig, new DynamoDBClient({}))
 
+// Queries can be use-case specific, tailored to answer specific user or
+// business questions.  This query returns the counter's current value,
+// along with the number of increments and decrements.
 export const handler = async (event: APIGatewayProxyEvent) => {
-  const { key } = event.queryStringParameters ?? {}
+  const { key, revision } = event.queryStringParameters ?? {}
 
   if (!key) return { statusCode: 400, body: 'key is required' }
 
   // Read all the events for the counter with the given key
   const events = readKey<CounterEvent>(store, key)
 
-  // Queries can be use-case specific, tailored to answer specific user or
-  // business questions.  This query returns the counter's current value,
-  // along with the number of increments and decrements.
+  // Build answer from events
   let counter = { key, value: 0, increments: 0, decrements: 0 }
   for await (const { data } of events) {
     switch (data.type) {

@@ -15,13 +15,11 @@ export interface IEventStore {
 }
 
 export type EventStoreTableProps = {
-  readonly name?: string
   readonly removalPolicy?: RemovalPolicy,
   readonly billingMode?: BillingMode
 }
 
 export type EventStoreProps = {
-  readonly name?: string
   readonly eventsTable: ITable
   readonly metadataTable: ITable
 }
@@ -35,16 +33,15 @@ export class EventStore extends Construct implements IEventStore {
   protected constructor(scope: Construct, id: string, p: EventStoreProps) {
     super(scope, id)
 
-    this.name = p.name ?? id
+    this.name = id
     this.eventsTable = p.eventsTable
     this.metadataTable = p.metadataTable
 
     this.config = `${this.name},${this.eventsTable.tableName},${this.metadataTable.tableName}`
   }
 
-  static createTables(scope: Construct, id: string, { name = id, ...tableProps }: EventStoreTableProps) {
-    const eventsTable = new Table(scope, `${name}-table`, {
-      tableName: name,
+  static createTables(scope: Construct, id: string, tableProps: EventStoreTableProps) {
+    const eventsTable = new Table(scope, `${id}-table`, {
       partitionKey: { name: 'slice', type: AttributeType.STRING },
       sortKey: { name: 'position', type: AttributeType.STRING },
       stream: StreamViewType.KEYS_ONLY,
@@ -52,31 +49,22 @@ export class EventStore extends Construct implements IEventStore {
     })
 
     eventsTable.addGlobalSecondaryIndex({
-      indexName: `${name}-by-key-position`,
+      indexName: `${id}-by-key-position`,
       partitionKey: { name: 'key', type: AttributeType.STRING },
       sortKey: { name: 'position', type: AttributeType.STRING }
     })
 
-    const metadataTable = new Table(scope, `${name}-table-metadata`, {
-      tableName: `${name}-metadata`,
+    const metadataTable = new Table(scope, `${id}-table-metadata`, {
       partitionKey: { name: 'pk', type: AttributeType.STRING },
       sortKey: { name: 'sk', type: AttributeType.STRING },
       ...tableProps
     })
 
-    return new EventStore(scope, id, { name, eventsTable, metadataTable })
+    return new EventStore(scope, id, { eventsTable, metadataTable })
   }
 
   static fromTables = (scope: Construct, id: string, p: EventStoreProps): EventStore => {
     return new EventStore(scope, id, p)
-  }
-
-  static fromName = (scope: Construct, id: string, name = id): EventStore => {
-    return new EventStore(scope, id, {
-      name,
-      eventsTable: Table.fromTableName(scope, `${name}-table`, name),
-      metadataTable: Table.fromTableName(scope, `${name}-metadata`, `${name}-metadata`)
-    })
   }
 
   grantReadEvents(g: IGrantable) {
