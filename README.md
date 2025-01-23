@@ -15,11 +15,11 @@ DynamoDB Event Store
 
 #### Prerequisites
 
-1. AWS account where you can deploy applications
+1. Ensure your AWS credentials are setup for the AWS environment where you want to deploy the example
+2. `npm install`
 
 #### Deploying an example
 
-1. Ensure your AWS credentials are setup for the AWS environment where you want to deploy the example
 2. `cd <example dir>`
 3. `npx cdk deploy`
 
@@ -27,7 +27,6 @@ The example will be deployed to your AWS account
 
 #### Destroying an example
 
-1. Ensure your AWS credentials are setup for the AWS environment where you want to deploy the example
 2. `cd <example dir>`
 3. `npx cdk destroy`
 
