@@ -12,15 +12,15 @@ export interface CounterSnapshotStackProps extends StackProps {
 }
 
 export class CounterSnapshotStack extends Stack {
-  public readonly eventStore: IEventStore
+  public readonly snapshotStore: IEventStore
 
-  constructor(scope: Construct, id: string, props: CounterSnapshotStackProps) {
+  constructor(scope: Construct, id: string, { eventStore, ...props }: CounterSnapshotStackProps) {
     super(scope, id, props)
 
     // -------------------------------------------
     // Snapshot store
 
-    const counterSnapshotEventStore = this.eventStore = new EventStore(this, 'counter-snapshots', {
+    const snapshotStore = this.snapshotStore = new EventStore(this, 'counter-snapshots', {
       removalPolicy: RemovalPolicy.DESTROY,
       billingMode: BillingMode.PAY_PER_REQUEST
     })
@@ -33,13 +33,13 @@ export class CounterSnapshotStack extends Stack {
       entry: resolve(__dirname, 'command.ts'),
       environment: {
         ...commonFunctionEnv,
-        eventStoreConfig: props.eventStore.config,
-        snapshotStoreConfig: counterSnapshotEventStore.config
+        eventStoreConfig: eventStore.config,
+        snapshotStoreConfig: snapshotStore.config
       }
     })
 
-    props.eventStore.grantReadWriteEvents(command)
-    counterSnapshotEventStore.grantReadWriteEvents(command)
+    eventStore.grantReadWriteEvents(command)
+    snapshotStore.grantReadWriteEvents(command)
 
     const commandUrl = command.addFunctionUrl({
       authType: FunctionUrlAuthType.NONE,
