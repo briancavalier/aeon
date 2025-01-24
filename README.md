@@ -8,8 +8,9 @@ DynamoDB Event Store
 
 1. [How to deploy](#how-to-deploy)
 1. Examples
-   1. [Counter](#counter) - simple counters with event sourcing and CQRS
-   1. [Leaderboards](#leaderboards) - more involved example of leaderboards, scores, and user profiles
+   1. [counter](#counter) - simple counters with event sourcing and CQRS
+   1. [counter-notify](#counter-notify) - adds event store notifications to build an optimize view
+   1. [counter-snapshot](#counter-snapshot) - adds snapshots to optimize counters
 
 ### How to deploy
 
@@ -32,7 +33,7 @@ The example will be deployed to your AWS account
 
 The example will be removed from your AWS account
 
-### Counter
+### counter
 
 Simple counters implemented using event sourcing and CQRS.
 
@@ -57,6 +58,8 @@ This is a good introduction to Aeon event stores, event sourcing, and CQRS, and 
 {"decrements":1,"value":3,"key":"1","increments":4}
 ```
 
-### Leaderboards
+### counter-notify
 
-_TBD_
+_WIP_
+
+### counter-snapshot
