@@ -31,12 +31,13 @@ export const fromConfigString = (configString: string, client: DynamoDBClient, n
 
 export const parseConfig = (configString: string): EventStoreConfig => {
   try {
-    const [name, eventsTable, metadataTable, byKeyPositionIndexName] = configString.split(',')
-    assert(typeof name === 'string', 'name must be a string')
-    assert(typeof eventsTable === 'string', 'eventsTable must be a string')
-    assert(typeof metadataTable === 'string', 'metadataTable must be a string')
-    assert(typeof byKeyPositionIndexName === 'string', 'byKeyPositionIndexName must be a string')
-    return { name, eventsTable, metadataTable, byKeyPositionIndexName }
+    const config = JSON.parse(configString)
+    assert(typeof config === 'object', 'config must be an object')
+    assert(typeof config.name === 'string', 'name must be a string')
+    assert(typeof config.eventsTable === 'string', 'eventsTable must be a string')
+    assert(typeof config.metadataTable === 'string', 'metadataTable must be a string')
+    assert(typeof config.byKeyPositionIndexName === 'string', 'byKeyPositionIndexName must be a string')
+    return config
   } catch (e) {
     throw new Error(`Invalid configString: ${configString}`, { cause: e })
   }

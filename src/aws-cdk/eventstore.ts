@@ -53,7 +53,12 @@ export class EventStore extends Construct implements IEventStore {
     this.eventsTable = eventsTable
     this.metadataTable = metadataTable
 
-    this.config = `${this.name},${this.eventsTable.tableName},${this.metadataTable.tableName},${this.byKeyPositionIndexName}`
+    this.config = JSON.stringify({
+      name: this.name,
+      eventsTable: this.eventsTable.tableName,
+      metadataTable: this.metadataTable.tableName,
+      byKeyPositionIndexName: this.byKeyPositionIndexName,
+    })
   }
 
   grantReadEvents(g: IGrantable) {
