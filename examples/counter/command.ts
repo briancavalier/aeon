@@ -18,8 +18,10 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   // Rebuild the counter's current value from the event history
   let value = initialValue
-  for await (const { data } of history)
-    value = update(value, data)
+  for await (const event of history) {
+    console.info(event)
+    value = update(value, event.data)
+  }
 
   // Essential domain logic: Decide what new events have occurred
   // based on the current value and incoming command

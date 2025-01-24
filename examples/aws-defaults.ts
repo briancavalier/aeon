@@ -9,5 +9,5 @@ export const commonFunctionProps = {
   bundling: { sourceMap: true },
   loggingFormat: LoggingFormat.JSON,
   applicationLogLevelV2: ApplicationLogLevel.DEBUG,
-  SystemLogLevelV2: SystemLogLevel.WARN,
+  SystemLogLevelV2: SystemLogLevel.INFO,
 } as const
