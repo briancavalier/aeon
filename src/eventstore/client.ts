@@ -3,6 +3,7 @@ import { ok as assert } from 'node:assert'
 import { monotonicFactory, } from 'ulid'
 import { ensureInclusive, Position, Range } from './position'
 import { getSlice, Slice, sliceEnd, slices, sliceStart } from './slice'
+import { marshall, NativeAttributeValue, unmarshall } from '@aws-sdk/util-dynamodb'
 
 export interface EventStoreClient {
   readonly name: string
@@ -55,7 +56,7 @@ export type Pending<D> = {
  * Append events to the event store. Provide an idempotency key to ensure
  * the events are only written once even if the same request is retried.
  */
-export const append = async <const D>(es: EventStoreClient, e: readonly Pending<D>[], idempotencyKey?: string): Promise<Position | undefined> => {
+export const append = async <const D extends NativeAttributeValue>(es: EventStoreClient, e: readonly Pending<D>[], idempotencyKey?: string): Promise<Position | undefined> => {
   if (e.length === 0) return undefined
 
   const now = Date.now()
@@ -71,7 +72,7 @@ export const append = async <const D>(es: EventStoreClient, e: readonly Pending<
           correlationId: { S: e.correlationId ?? position },
           position: { S: position },
           type: { S: e.type },
-          data: { S: JSON.stringify(e.data) }
+          data: { M: marshall(e.data) }
         },
         ConditionExpression: 'attribute_not_exists(#key) and attribute_not_exists(#position)',
         ExpressionAttributeNames: {
@@ -251,7 +252,7 @@ const toEvent = <A>(item: Record<string, AttributeValue>): Committed<A> => ({
   position: item.position.S,
   correlationId: item.correlationId.S,
   timestamp: item.timestamp.S,
-  data: JSON.parse(item.data.S as string)
+  data: item.data?.M && unmarshall(item.data.M)
 } as Committed<A>)
 
 const wasIdempotent = (consumedCapacity: readonly { readonly CapacityUnits?: number }[]): boolean =>
