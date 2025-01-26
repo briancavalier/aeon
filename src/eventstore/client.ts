@@ -120,15 +120,14 @@ export type Committed<D> = Pending<D> & {
  * event store.  Omit range entirely to read all events.
  */
 export async function* read<A>(es: EventStoreClient, r: Partial<Range> = {}): AsyncIterable<Committed<A>> {
-  // TODO: Blindly calling getExtents here is inefficient
-  const extents = await getExtents(es, ensureInclusive(r))
+  const inclusive = ensureInclusive(r)
+  const extents = hasStartEnd(inclusive)
+    ? inclusive
+    : await getExtents(es, inclusive)
 
   if (extents.start > extents.end) return
 
-  const start = getSlice(extents.start)
-  const end = getSlice(extents.end)
-
-  for (const slice of slices(start, end)) {
+  for (const slice of slices(getSlice(extents.start), getSlice(extents.end))) {
     const results = paginateQuery(es,
       {
         TableName: es.eventsTable,
@@ -148,6 +147,8 @@ export async function* read<A>(es: EventStoreClient, r: Partial<Range> = {}): As
       yield* Items.map(toEvent<A>)
   }
 }
+
+const hasStartEnd = (r: Partial<Range>): r is Range => !!(r.start && r.end)
 
 /**
  * Read a range of events for a specific key from the event store. Range is inclusive,

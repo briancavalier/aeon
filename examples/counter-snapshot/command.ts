@@ -20,8 +20,8 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   // In a real app, we'd parse+validate the incoming command
   const command = JSON.parse(event.body ?? '') as CounterCommand
 
-  // Read the latest snapshot, if at least exists, from
-  // the snapshot store
+  // Read the latest snapshot from the snapshot store
+  // If there are no snapshots yet, this will return undefined
   const snapshot = await readKeyLatest<CounterSnapshot>(snapshotStore, command.key)
 
   // Compute the range of events we need to read
@@ -48,6 +48,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   // Essential domain logic: Decide what new events have occurred
   // based on the current value and incoming command
   const events = decide(value, command)
+  eventCount += events.length
 
   const timestamp = new Date().toISOString()
 
