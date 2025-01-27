@@ -41,7 +41,7 @@ export const handler = async ({ eventStoreConfig, end }: Notification) => {
 export const updateCounter = (ddb: DynamoDBDocumentClient, table: string, { key, type }: CounterEvent, revision: Position) =>
   ddb.send(new UpdateCommand({
     TableName: table,
-    Key: { pk: `counter/${key}` },
+    Key: { pk: key },
     UpdateExpression: 'add #value :a, #increments :i, #decrements :d set #revision = :revision',
     ExpressionAttributeNames: {
       '#value': 'value',

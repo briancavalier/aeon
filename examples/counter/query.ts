@@ -11,12 +11,12 @@ const store = fromConfigString(process.env.eventStoreConfig, new DynamoDBClient(
 // business questions.  This query returns the counter's current value,
 // along with the number of increments and decrements.
 export const handler = async (event: APIGatewayProxyEvent) => {
-  const { key, revision } = event.queryStringParameters ?? {}
+  const { key } = event.queryStringParameters ?? {}
 
   if (!key) return { statusCode: 400, body: 'key is required' }
 
   // Read all the events for the counter with the given key
-  const events = readKey<CounterEvent>(store, key)
+  const events = readKey<CounterEvent>(store, `counter/${key}`)
 
   // Build answer from events
   let counter = { key, value: 0, increments: 0, decrements: 0 }

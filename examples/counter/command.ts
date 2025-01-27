@@ -14,7 +14,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const command = JSON.parse(event.body ?? '') as CounterCommand
 
   // Read the counter's event history from the event store
-  const history = readKey<CounterEvent>(store, command.key)
+  const history = readKey<CounterEvent>(store, `counter/${command.key}`)
 
   // Rebuild the counter's current value from the event history
   let value = initialValue

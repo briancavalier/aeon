@@ -30,7 +30,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const range = snapshotRange(snapshot?.data)
   console.debug({ snapshot, range })
 
-  const history = readKey<CounterEvent>(store, command.key, range)
+  const history = readKey<CounterEvent>(store, `counter/${command.key}`, range)
 
   // Rebuild the counter's current value
   // If we have a snapshot, start from its value

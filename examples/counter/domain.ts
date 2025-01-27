@@ -2,12 +2,12 @@ export type CounterEvent = CounterIncrementedEvent | CounterDecrementedEvent
 
 export type CounterIncrementedEvent = Readonly<{
   type: 'incremented',
-  key: string,
+  key: `counter/${string}`,
 }>
 
 export type CounterDecrementedEvent = Readonly<{
   type: 'decremented',
-  key: string,
+  key: `counter/${string}`,
 }>
 
 export type CounterCommand = CounterIncrementCommand | CounterDecrementCommand
@@ -36,10 +36,10 @@ export const initialValue = 0
 export const decide = (value: number, { type, key }: CounterCommand): readonly CounterEvent[] => {
   switch (type) {
     case 'increment':
-      return [{ type: 'incremented', key }]
+      return [{ type: 'incremented', key: `counter/${key}` }]
 
     case 'decrement':
-      return value > 0 ? [{ type: 'decremented', key }] : []
+      return value > 0 ? [{ type: 'decremented', key: `counter/${key}` }] : []
   }
 }
 

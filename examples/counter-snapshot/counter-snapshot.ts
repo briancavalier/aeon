@@ -8,6 +8,3 @@ export type CounterSnapshot = Readonly<{
 export const snapshotRange = (snapshot?: CounterSnapshot): Partial<Range> => snapshot
   ? { start: snapshot.revision, startExclusive: true }
   : {}
-
-export const snapshotAgeMs = (snapshot: Committed<CounterSnapshot>, now: string) =>
-  new Date(snapshot.timestamp).getTime() - new Date(now).getTime()
