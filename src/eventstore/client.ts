@@ -45,75 +45,110 @@ export const parseConfig = (configString: string): EventStoreConfig => {
 }
 
 export type Pending<D> = {
-  readonly key: string
   readonly type: string
   readonly timestamp: string // RFC3339 UTC datetime
   readonly correlationId?: string
   readonly data: D
 }
 
+export type Committed<D> = Pending<D> & {
+  readonly key: string
+  readonly slice: string
+  readonly position: Position
+}
+
+export type AppendResult =
+  | Readonly<{ type: 'unchanged' }>
+  | Readonly<{ type: 'appended', count: number, position: Position | undefined }>
+  | Readonly<{ type: 'aborted/optimistic-concurrency', error: Error }>
+  | Readonly<{ type: 'aborted/unknown', error: unknown }>
+
+export type AppendKeyOptions = Readonly<{
+  expectedPosition?: Position,
+  idempotencyKey?: string
+}>
+
 /**
  * Append events to the event store. Provide an idempotency key to ensure
  * the events are only written once even if the same request is retried.
  */
-export const append = async <const D extends NativeAttributeValue>(es: EventStoreClient, e: readonly Pending<D>[], idempotencyKey?: string): Promise<Position | undefined> => {
-  if (e.length === 0) return undefined
+export const appendKey = async <const D extends NativeAttributeValue>(es: EventStoreClient, key: string, events: readonly Pending<D>[], {
+  expectedPosition,
+  idempotencyKey
+}: AppendKeyOptions = {}
+): Promise<AppendResult> => {
+  if (events.length === 0) return { type: 'unchanged' }
 
   const now = Date.now()
-  const items = e.map(e => {
+  const items = events.map(e => {
     const position = es.nextPosition(now)
     return {
       Put: {
         TableName: es.eventsTable,
         Item: {
           slice: { S: getSlice(position) },
-          key: { S: e.key },
+          key: { S: key },
           timestamp: { S: e.timestamp },
           correlationId: { S: e.correlationId ?? position },
           position: { S: position },
           type: { S: e.type },
           data: { M: marshall(e.data) }
         },
-        ConditionExpression: 'attribute_not_exists(#key) and attribute_not_exists(#position)',
-        ExpressionAttributeNames: {
-          '#key': 'key',
-          '#position': 'position'
-        }
+        ConditionExpression: 'attribute_not_exists(#key)',
+        ExpressionAttributeNames: { '#key': 'key' }
       }
     }
   })
 
-  // TODO: TransactWriteItems supports up to 100 items. Need strategy
-  // for handling larger inputs.  Options:
-  // 1. Break up into multiple transactions, return more info
-  //    about which succeeded and which failed, so caller can retry
-  // 2. Push limit out to caller
-  const result = await es.client.send(new TransactWriteItemsCommand({
-    ClientRequestToken: idempotencyKey,
-    TransactItems: [
-      ...items,
-      {
-        Put: {
-          TableName: es.metadataTable,
-          Item: {
-            pk: { S: 'slice' },
-            sk: { S: getSlice(es.nextPosition(now)) },
+  const newPosition = items[items.length - 1].Put.Item.position.S
+  try {
+    const result = await es.client.send(new TransactWriteItemsCommand({
+      ClientRequestToken: idempotencyKey,
+      ReturnConsumedCapacity: 'TOTAL',
+      TransactItems: [
+        {
+          Put: {
+            TableName: es.metadataTable,
+            Item: {
+              pk: { S: key },
+              sk: { S: 'state' },
+              position: { S: newPosition }
+            },
+            ...expectedPosition ? {
+                ConditionExpression: '#position = :expectedPosition',
+                ExpressionAttributeNames: { '#position': 'position' },
+                ExpressionAttributeValues: { ':expectedPosition': { S: expectedPosition } }
+              } : {
+                ConditionExpression: 'attribute_not_exists(#position)',
+                ExpressionAttributeNames: { '#position': 'position' }
+              }
           }
-        }
-      }
-    ],
-    ReturnConsumedCapacity: 'TOTAL'
-  }))
+        },
+        {
+          Put: {
+            TableName: es.metadataTable,
+            Item: {
+              pk: { S: 'slice' },
+              sk: { S: getSlice(es.nextPosition(now)) },
+            }
+          }
+        },
+        ...items,
+      ]
+    }))
 
-  return idempotencyKey && wasIdempotent(result.ConsumedCapacity ?? [])
-    ? undefined
-    : items[items.length - 1].Put.Item.position.S
+    return idempotencyKey && wasIdempotent(result.ConsumedCapacity ?? [])
+      ? { type: 'unchanged' }
+      : { type: 'appended', count: items.length, position: newPosition }
+  } catch (e) {
+    return mapTransactionError(e)
+  }
 }
 
-export type Committed<D> = Pending<D> & {
-  readonly slice: string
-  readonly position: Position
-}
+const mapTransactionError = (e: unknown): AppendResult =>
+  (e instanceof Error && e.name === 'TransactionCanceledException')
+    ? { type: 'aborted/optimistic-concurrency', error: e }
+    : { type: 'aborted/unknown', error: e }
 
 /**
  * Read a range of all events from the event store. Range is inclusive, and omitting
