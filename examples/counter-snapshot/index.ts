@@ -1,6 +1,6 @@
 import { App } from 'aws-cdk-lib'
 import { CounterNotifyStack } from '../counter-notify/stack'
-import { CounterStack } from '../counter/stack'
+import { CounterStack } from '../counter-basic/stack'
 import { CounterSnapshotStack } from './stack'
 
 const app = new App()

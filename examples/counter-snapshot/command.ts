@@ -1,16 +1,14 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { appendKey, fromConfigString, Position, readKey, readKeyLatest } from '../../src/eventstore'
+import { appendKey, EventStoreClient, fromConfigString, Position, readKey, readKeyLatest } from '../../src/eventstore'
 import { CounterCommand, CounterEvent, decide, initialValue, update } from '../counter-basic/domain'
 import { CounterSnapshot, snapshotRange } from './counter-snapshot'
 
 assert(process.env.eventStoreConfig)
-assert(process.env.snapshotStoreConfig)
 
 const client = new DynamoDBClient({})
 const store = fromConfigString(process.env.eventStoreConfig, client)
-const snapshotStore = fromConfigString(process.env.snapshotStoreConfig, client)
 
 // Record an updated snapshot every 10 events. In a real application, this number
 // may be higher, tuned to the application needs.
@@ -23,7 +21,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   // Read the latest snapshot from the snapshot store
   // If there are no snapshots yet, this will return undefined
   const snapshot = await readKeyLatest<CounterSnapshot>(
-    snapshotStore,
+    store,
     `counter-snapshot/${command.key}`
   )
 
@@ -72,7 +70,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     const newValue = events.reduce(update, value)
     console.debug({ msg: 'Adding new snapshot', newValue, timestamp, position: result.position })
 
-    await appendNewSnapshot(command.key, newValue, timestamp, result.position)
+    await appendNewSnapshot(store, command.key, newValue, timestamp, result.position)
   } else {
     console.debug({ msg: 'Not adding new snapshot', eventCount, maxEventsBetweenSnapshots })
   }
@@ -80,12 +78,12 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   return { statusCode: result.type === 'appended' ? 200 : 409, body: result }
 }
 
-const appendNewSnapshot = async (key: string, value: number, timestamp: string, revision?: Position) => {
+const appendNewSnapshot = async (s: EventStoreClient, key: string, value: number, timestamp: string, revision?: Position) => {
   const newSnapshot = {
-    type: 'snapshot',
+    type: 'snapshot-created',
     timestamp,
     data: { revision, value }
   }
 
-  return appendKey(snapshotStore, `counter-snapshot/${key}`, [newSnapshot])
+  return appendKey(s, `counter-snapshot/${key}`, [newSnapshot])
 }
