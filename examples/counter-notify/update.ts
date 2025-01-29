@@ -2,7 +2,7 @@ import { DynamoDBClient, ReturnValue } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import assert from 'node:assert'
 import { fromConfig, Notification, Position, read } from '../../src/eventstore'
-import { CounterEvent } from '../counter/domain'
+import { CounterEvent } from '../counter-basic/domain'
 import { getRevision, updateRevision } from './revision'
 
 assert(process.env.viewTable)
