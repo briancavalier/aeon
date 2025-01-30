@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { appendKey, EventStoreClient, fromConfigString, Position, readKey, readKeyLatest } from '../../src/eventstore'
+import { appendKey, EventStoreClient, fromConfigString, Position, readForAppend, readKey, readKeyLatest } from '../../src/eventstore'
 import { CounterCommand, CounterEvent, decide, initialValue, update } from '../counter-basic/domain'
 import { CounterSnapshot, snapshotRange } from './counter-snapshot'
 
@@ -31,8 +31,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const range = snapshotRange(snapshot?.data)
   console.debug({ snapshot, range })
 
-  const latest = await readKeyLatest<CounterEvent>(store, `counter/${command.key}`)
-  const history = readKey<CounterEvent>(store, `counter/${command.key}`, latest ? { ...range, end: latest?.position } : range)
+  const [latest, history] = await readForAppend<CounterEvent>(store, `counter/${command.key}`, range)
 
   // Rebuild the counter's current value
   // If we have a snapshot, start from its value
@@ -60,7 +59,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     store,
     `counter/${command.key}`,
     events.map(data => ({ ...data, timestamp, data })),
-    { expectedPosition: latest?.position }
+    { expectedPosition: latest }
   )
 
   // If we wrote some new events (position !== undefined), and

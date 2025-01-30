@@ -1,10 +1,11 @@
-import { Committed, Position, Range } from '../../src/eventstore'
+import { Position, Range } from '../../src/eventstore'
 
 export type CounterSnapshot = Readonly<{
   revision: Position
   value: number
 }>
 
-export const snapshotRange = (snapshot?: CounterSnapshot): Partial<Range> => snapshot
-  ? { start: snapshot.revision, startExclusive: true }
-  : {}
+export const snapshotRange = (snapshot?: CounterSnapshot) =>
+  snapshot
+    ? { start: snapshot.revision, startExclusive: true } as const
+    : {} as const
