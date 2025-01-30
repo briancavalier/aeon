@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { fromConfigString, readKey } from '../../src/eventstore'
+import { fromConfigString, read } from '../../src/eventstore'
 import { CounterEvent } from './domain'
 
 assert(process.env.eventStoreConfig)
@@ -16,7 +16,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   if (!key) return { statusCode: 400, body: 'key is required' }
 
   // Read all the events for the counter with the given key
-  const events = readKey<CounterEvent>(store, `counter/${key}`)
+  const events = read<CounterEvent>(store, `counter/${key}`)
 
   // Build answer from events
   let counter = { key, value: 0, increments: 0, decrements: 0 }

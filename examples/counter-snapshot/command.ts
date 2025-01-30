@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { appendKey, EventStoreClient, fromConfigString, Position, readForAppend, readKey, readKeyLatest } from '../../src/eventstore'
+import { append, EventStoreClient, fromConfigString, Position, readForAppend, read, readLatest } from '../../src/eventstore'
 import { CounterCommand, CounterEvent, decide, initialValue, update } from '../counter-basic/domain'
 import { CounterSnapshot, snapshotRange } from './counter-snapshot'
 
@@ -20,7 +20,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   // Read the latest snapshot from the snapshot store
   // If there are no snapshots yet, this will return undefined
-  const snapshot = await readKeyLatest<CounterSnapshot>(
+  const snapshot = await readLatest<CounterSnapshot>(
     store,
     `counter-snapshot/${command.key}`
   )
@@ -55,7 +55,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   // Append the new events to the event store
   // This returns the commit position of the last event appended
-  const result = await appendKey(
+  const result = await append(
     store,
     `counter/${command.key}`,
     events.map(data => ({ ...data, timestamp, data })),
@@ -84,5 +84,5 @@ const appendNewSnapshot = async (s: EventStoreClient, key: string, value: number
     data: { revision, value }
   }
 
-  return appendKey(s, `counter-snapshot/${key}`, [newSnapshot])
+  return append(s, `counter-snapshot/${key}`, [newSnapshot])
 }

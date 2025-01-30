@@ -1,7 +1,7 @@
 import { DynamoDBClient, ReturnValue } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import assert from 'node:assert'
-import { fromConfig, Notification, Position, read } from '../../src/eventstore'
+import { fromConfig, Notification, Position, readAll } from '../../src/eventstore'
 import { CounterEvent } from '../counter-basic/domain'
 import { getRevision, updateRevision } from './revision'
 
@@ -22,7 +22,7 @@ export const handler = async ({ eventStoreConfig, end }: Notification) => {
   const start = await getRevision(client, table) ?? ''
 
   // Read events between last seen and end
-  const events = read<CounterEvent>(store, { start, startExclusive: true, end })
+  const events = readAll<CounterEvent>(store, { start, startExclusive: true, end })
 
   console.debug({ eventStoreConfig, start, end })
 

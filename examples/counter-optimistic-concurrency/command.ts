@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { appendKey, fromConfigString, Position, readForAppend, readKey, readKeyLatest } from '../../src/eventstore'
+import { append, fromConfigString, Position, readForAppend, read, readLatest } from '../../src/eventstore'
 import { CounterCommand, CounterEvent, decide, initialValue, update } from '../counter-basic/domain'
 
 assert(process.env.eventStoreConfig)
@@ -33,7 +33,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   // events have been appended between the time we read the latest
   // event and the time we're appending the new events.
   // That guarantees the current state of the counter hasn't changed.
-  const result = await appendKey(
+  const result = await append(
     store,
     `counter/${command.key}`,
     events.map(data => ({ ...data, data })),

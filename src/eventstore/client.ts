@@ -1,9 +1,10 @@
 import { AttributeValue, DynamoDBClient, paginateQuery, QueryCommand, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
 import { ok as assert } from 'node:assert'
 import { monotonicFactory, } from 'ulid'
-import { ensureInclusive, Position, Range } from './position'
+import { ensureInclusive, max, min, Position, Range } from './position'
 import { getSlice, Slice, sliceEnd, slices, sliceStart } from './slice'
 import { marshall, NativeAttributeValue, unmarshall } from '@aws-sdk/util-dynamodb'
+import { Pending, Committed } from './event'
 
 export interface EventStoreClient {
   readonly name: string
@@ -44,22 +45,9 @@ export const parseConfig = (configString: string): EventStoreConfig => {
   }
 }
 
-export type Pending<D> = {
-  readonly type: string
-  readonly correlationId?: string
-  readonly data: D
-}
-
-export type Committed<D> = Pending<D> & {
-  readonly key: string
-  readonly slice: string
-  readonly position: Position
-  readonly committedAt: string
-}
-
 export type AppendResult =
   | Readonly<{ type: 'unchanged' }>
-  | Readonly<{ type: 'appended', count: number, position: Position | undefined }>
+  | Readonly<{ type: 'appended', count: number, position: Position }>
   | Readonly<{ type: 'aborted/optimistic-concurrency', error: Error }>
   | Readonly<{ type: 'aborted/unknown', error: unknown }>
 
@@ -72,7 +60,7 @@ export type AppendKeyOptions = Readonly<{
  * Append events to the event store. Provide an idempotency key to ensure
  * the events are only written once even if the same request is retried.
  */
-export const appendKey = async <const D extends NativeAttributeValue>(es: EventStoreClient, key: string, events: readonly Pending<D>[], {
+export const append = async <const D extends NativeAttributeValue>(es: EventStoreClient, key: string, events: readonly Pending<D>[], {
   expectedPosition,
   idempotencyKey
 }: AppendKeyOptions = {}
@@ -156,7 +144,7 @@ const mapTransactionError = (e: unknown): AppendResult =>
  * start will read from the beginning, and ommitting end will read to end of the
  * event store.  Omit range entirely to read all events.
  */
-export async function* read<A>(es: EventStoreClient, r: Partial<Range> = {}): AsyncIterable<Committed<A>> {
+export async function* readAll<A>(es: EventStoreClient, r: Partial<Range> = {}): AsyncIterable<Committed<A>> {
   const inclusive = ensureInclusive(r)
   const extents = hasStartEnd(inclusive)
     ? inclusive
@@ -190,8 +178,8 @@ const hasStartEnd = (r: Partial<Range>): r is Range => !!(r.start && r.end)
 type StartRange = Pick<Range, 'start' | 'startExclusive'>
 
 export const readForAppend = async <A>(es: EventStoreClient, key: string, r: Partial<StartRange> = {}): Promise<readonly [Position | undefined, AsyncIterable<Committed<A>>]> => {
-  const latest = await readKeyLatest(es, key)
-  return [latest?.position, readKey<A>(es, key, { end: latest?.position, ...r })]
+  const latest = await readLatest(es, key)
+  return [latest?.position, read<A>(es, key, { end: latest?.position, ...r })]
 }
 
 /**
@@ -199,7 +187,7 @@ export const readForAppend = async <A>(es: EventStoreClient, key: string, r: Par
  * and omitting start will read from the beginning, and ommitting end will read to
  * end of the event store.  Omit range entirely to read all events for the specified key.
  */
-export async function* readKey<A>(es: EventStoreClient, key: string, r: Partial<Range> = {}): AsyncIterable<Committed<A>> {
+export async function* read<A>(es: EventStoreClient, key: string, r: Partial<Range> = {}): AsyncIterable<Committed<A>> {
   const { start, end } = ensureInclusive(r)
 
   if (start && end && start > end) return
@@ -231,7 +219,7 @@ export async function* readKey<A>(es: EventStoreClient, key: string, r: Partial<
  * Read the most recent event for the provided key. This can be
  * useful to peek at the latest event or position for a key.
  */
-export const readKeyLatest = async <A>(es: EventStoreClient, key: string): Promise<Committed<A> | undefined> => {
+export const readLatest = async <A>(es: EventStoreClient, key: string): Promise<Committed<A> | undefined> => {
   const { Items = [] } = await es.client.send(new QueryCommand({
     TableName: es.eventsTable,
     IndexName: es.byKeyPositionIndexName,
