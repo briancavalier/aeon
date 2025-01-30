@@ -27,9 +27,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   // based on the current value and incoming command
   const events = decide(value, command)
 
-  const timestamp = new Date().toISOString()
-
   // Append the new events to the event store
   // This returns the commit position of the last event appended
-  return appendKey(store, `counter/${command.key}`, events.map(data => ({ ...data, timestamp, data })))
+  return appendKey(store, `counter/${command.key}`, events.map(data => ({ ...data, data })))
 }
