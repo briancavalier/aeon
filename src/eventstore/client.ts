@@ -187,6 +187,13 @@ export async function* read<A>(es: EventStoreClient, r: Partial<Range> = {}): As
 
 const hasStartEnd = (r: Partial<Range>): r is Range => !!(r.start && r.end)
 
+type StartRange = Pick<Range, 'start' | 'startExclusive'>
+
+export const readForAppend = async <A>(es: EventStoreClient, key: string, r: Partial<StartRange> = {}): Promise<readonly [Position | undefined, AsyncIterable<Committed<A>>]> => {
+  const latest = await readKeyLatest(es, key)
+  return [latest?.position, readKey<A>(es, key, { end: latest?.position, ...r })]
+}
+
 /**
  * Read a range of events for a specific key from the event store. Range is inclusive,
  * and omitting start will read from the beginning, and ommitting end will read to
