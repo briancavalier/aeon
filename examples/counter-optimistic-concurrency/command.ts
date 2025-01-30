@@ -29,8 +29,6 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   // based on the current value and incoming command
   const events = decide(value, command)
 
-  const timestamp = new Date().toISOString()
-
   // It's important that we append the new events if no other
   // events have been appended between the time we read the latest
   // event and the time we're appending the new events.
@@ -38,7 +36,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const result = await appendKey(
     store,
     `counter/${command.key}`,
-    events.map(data => ({ ...data, timestamp, data })),
+    events.map(data => ({ ...data, data })),
     { expectedPosition: position }
   )
 

@@ -46,7 +46,6 @@ export const parseConfig = (configString: string): EventStoreConfig => {
 
 export type Pending<D> = {
   readonly type: string
-  readonly timestamp: string // RFC3339 UTC datetime
   readonly correlationId?: string
   readonly data: D
 }
@@ -55,6 +54,7 @@ export type Committed<D> = Pending<D> & {
   readonly key: string
   readonly slice: string
   readonly position: Position
+  readonly committedAt: string
 }
 
 export type AppendResult =
@@ -80,6 +80,7 @@ export const appendKey = async <const D extends NativeAttributeValue>(es: EventS
   if (events.length === 0) return { type: 'unchanged' }
 
   const now = Date.now()
+  const committedAt = new Date(now).toISOString()
   const items = events.map(e => {
     const position = es.nextPosition(now)
     return {
@@ -88,7 +89,7 @@ export const appendKey = async <const D extends NativeAttributeValue>(es: EventS
         Item: {
           slice: { S: getSlice(position) },
           key: { S: key },
-          timestamp: { S: e.timestamp },
+          committedAt: { S: committedAt },
           correlationId: { S: e.correlationId ?? position },
           position: { S: position },
           type: { S: e.type },
@@ -293,7 +294,7 @@ const toEvent = <A>(item: Record<string, AttributeValue>): Committed<A> => ({
   type: item.type.S,
   position: item.position.S,
   correlationId: item.correlationId.S,
-  timestamp: item.timestamp.S,
+  committedAt: item.committedAt.S,
   data: item.data?.M && unmarshall(item.data.M)
 } as Committed<A>)
 
