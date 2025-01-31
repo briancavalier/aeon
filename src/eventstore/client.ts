@@ -1,8 +1,8 @@
 import { AttributeValue, DynamoDBClient, paginateQuery, QueryCommand, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
 import { ok as assert } from 'node:assert'
 import { monotonicFactory, } from 'ulid'
-import { ensureInclusive, max, min, Position, Range } from './position'
-import { getSlice, Slice, sliceEnd, slices, sliceStart } from './slice'
+import { ensureInclusive, InclusiveRange, Position, RangeInput } from './position'
+import { getSlice, Slice } from './slice'
 import { marshall, NativeAttributeValue, unmarshall } from '@aws-sdk/util-dynamodb'
 import { Pending, Committed } from './event'
 
@@ -104,13 +104,13 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
               position: { S: newPosition }
             },
             ...expectedPosition ? {
-                ConditionExpression: '#position = :expectedPosition',
-                ExpressionAttributeNames: { '#position': 'position' },
-                ExpressionAttributeValues: { ':expectedPosition': { S: expectedPosition } }
-              } : {
-                ConditionExpression: 'attribute_not_exists(#position)',
-                ExpressionAttributeNames: { '#position': 'position' }
-              }
+              ConditionExpression: '#position = :expectedPosition',
+              ExpressionAttributeNames: { '#position': 'position' },
+              ExpressionAttributeValues: { ':expectedPosition': { S: expectedPosition } }
+            } : {
+              ConditionExpression: 'attribute_not_exists(#position)',
+              ExpressionAttributeNames: { '#position': 'position' }
+            }
           }
         },
         {
@@ -144,40 +144,44 @@ const mapTransactionError = (e: unknown): AppendResult =>
  * start will read from the beginning, and ommitting end will read to end of the
  * event store.  Omit range entirely to read all events.
  */
-export async function* readAll<A>(es: EventStoreClient, r: Partial<Range> = {}): AsyncIterable<Committed<A>> {
-  const inclusive = ensureInclusive(r)
-  const extents = hasStartEnd(inclusive)
-    ? inclusive
-    : await getExtents(es, inclusive)
+export async function* readAll<A>(es: EventStoreClient, r: RangeInput = {}): AsyncIterable<Committed<A>> {
+  const range = ensureInclusive(r)
+  if (range.limit <= 0 || range.start > range.end) return
 
-  if (extents.start > extents.end) return
+  const slices = getSlices(es, range)
 
-  for (const slice of slices(getSlice(extents.start), getSlice(extents.end))) {
-    const results = paginateQuery(es,
-      {
-        TableName: es.eventsTable,
-        KeyConditionExpression: '#slice = :slice AND #position between :start AND :end',
-        ExpressionAttributeNames: {
-          '#slice': 'slice',
-          '#position': 'position'
-        },
-        ExpressionAttributeValues: {
-          ':slice': { S: slice },
-          ':start': { S: extents.start },
-          ':end': { S: extents.end }
-        },
-      })
+  let remaining = range.limit
+  for await (const page of slices) {
+    for (const slice of page) {
+      console.log({ msg: "Reading slice", slice })
+      const results = paginateQuery(es,
+        {
+          TableName: es.eventsTable,
+          KeyConditionExpression: '#slice = :slice AND #position between :start AND :end',
+          ExpressionAttributeNames: {
+            '#slice': 'slice',
+            '#position': 'position'
+          },
+          ExpressionAttributeValues: {
+            ':slice': { S: slice },
+            ':start': { S: range.start },
+            ':end': { S: range.end }
+          },
+        })
 
-    for await (const { Items = [] } of results)
-      yield* Items.map(toEvent<A>)
+      for await (const { Items = [] } of results) {
+        if (remaining <= Items.length)
+          return yield* Items.slice(0, remaining).map(toEvent<A>)
+
+        remaining -= Items.length
+        yield* Items.map(toEvent<A>)
+      }
+    }
+
   }
 }
 
-const hasStartEnd = (r: Partial<Range>): r is Range => !!(r.start && r.end)
-
-type StartRange = Pick<Range, 'start' | 'startExclusive'>
-
-export const readForAppend = async <A>(es: EventStoreClient, key: string, r: Partial<StartRange> = {}): Promise<readonly [Position | undefined, AsyncIterable<Committed<A>>]> => {
+export const readForAppend = async <A>(es: EventStoreClient, key: string, r: RangeInput = {}): Promise<readonly [Position | undefined, AsyncIterable<Committed<A>>]> => {
   const latest = await readLatest(es, key)
   return [latest?.position, read<A>(es, key, { end: latest?.position, ...r })]
 }
@@ -187,7 +191,7 @@ export const readForAppend = async <A>(es: EventStoreClient, key: string, r: Par
  * and omitting start will read from the beginning, and ommitting end will read to
  * end of the event store.  Omit range entirely to read all events for the specified key.
  */
-export async function* read<A>(es: EventStoreClient, key: string, r: Partial<Range> = {}): AsyncIterable<Committed<A>> {
+export async function* read<A>(es: EventStoreClient, key: string, r: RangeInput = {}): AsyncIterable<Committed<A>> {
   const { start, end } = ensureInclusive(r)
 
   if (start && end && start > end) return
@@ -233,47 +237,23 @@ export const readLatest = async <A>(es: EventStoreClient, key: string): Promise<
   return Items[0] && toEvent<A>(Items[0])
 }
 
-const getExtents = async (es: EventStoreClient, range: Partial<Range>): Promise<Range> => {
-  const [start, end] = await Promise.all([
-    es.client.send(new QueryCommand({
-      TableName: es.metadataTable,
-      KeyConditionExpression: '#pk = :pk',
-      ExpressionAttributeNames: { '#pk': 'pk' },
-      ExpressionAttributeValues: { ':pk': { S: 'slice' } },
-      Limit: 1,
-      ScanIndexForward: true
-    })),
-    es.client.send(new QueryCommand({
-      TableName: es.metadataTable,
-      KeyConditionExpression: '#pk = :pk',
-      ExpressionAttributeNames: { '#pk': 'pk' },
-      ExpressionAttributeValues: { ':pk': { S: 'slice' } },
-      Limit: 1,
-      ScanIndexForward: false
-    })),
-  ])
+async function* getSlices(es: EventStoreClient, range: InclusiveRange): AsyncIterable<readonly Slice[]> {
+  const pages = paginateQuery(es, {
+    TableName: es.metadataTable,
+    KeyConditionExpression: '#pk = :pk and #sk between :start and :end',
+    ExpressionAttributeNames: {
+      '#pk': 'pk',
+      '#sk': 'sk'
+    },
+    ExpressionAttributeValues: {
+      ':pk': { S: 'slice' },
+      ':start': { S: getSlice(range.start) },
+      ':end': { S: getSlice(range.end) },
+    },
+  })
 
-  const ps = start.Items?.[0]?.sk.S as Slice | undefined
-  const pe = end.Items?.[0]?.sk.S as Slice | undefined
-
-  // Intersect range and store extents
-  return {
-    start: getStart(ps && sliceStart(ps), range.start),
-    end: getEnd(pe && sliceEnd(pe), range.end)
-  } as Range
-}
-
-const positionMin = '00000000000000000000000000' as Position
-const positionMax = '7ZZZZZZZZZZZZZZZZZZZZZZZZZ' as Position
-
-const getStart = (p1: Position | undefined, p2: Position | undefined): Position => {
-  if (p1 && p2) return p1 > p2 ? p1 : p2
-  return p1 ?? p2 ?? positionMin
-}
-
-const getEnd = (p1: Position | undefined, p2: Position | undefined): Position => {
-  if (p1 && p2) return p1 < p2 ? p1 : p2
-  return p1 ?? p2 ?? positionMax
+  for await (const { Items = [] } of pages)
+    yield Items.map(item => item.sk.S as Slice)
 }
 
 const toEvent = <A>(item: Record<string, AttributeValue>): Committed<A> => ({
