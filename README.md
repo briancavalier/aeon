@@ -1,65 +1,14 @@
-# Aeon
+# Aeon - Event Sourcing with DynamoDB
 
-DynamoDB Event Store
+Aeon is an experimental serverless event store built on AWS DynamoDB, designed to explore event sourcing, CQRS, and event-driven architectures. Implemented as a TypeScript library and an AWS CDK construct, Aeon makes it easy to deploy and experiment with event stores in your own AWS environment. If you’re curious about strong event ordering, optimistic concurrency, and eventual consistency, Aeon provides a hands-on way to dive in without the complexity of a full-scale framework.
 
-1. [Examples](#examples)
+Some things you can explore:
 
-## Examples
+* **Strong event ordering** – See how events can be stored and retrieved in a strict sequence.
+* **Optimistic concurrency** – Learn how to handle concurrent writes without conflicts.
+* **Manage eventual consistency** – Experiment with tracking seen event revisions for CQRS read models.
+* **Built on DynamoDB** – Understand the trade-offs of using a NoSQL database for event sourcing.
+* **Easy deployment** – Use the AWS CDK construct to quickly set up an event store in your own AWS account.
 
-1. [How to deploy](#how-to-deploy)
-1. Examples
-   1. [counter](#counter) - simple counters with event sourcing and CQRS
-   1. [counter-notify](#counter-notify) - adds event store notifications to build an optimize view
-   1. [counter-snapshot](#counter-snapshot) - adds snapshots to optimize counters
+Aeon isn’t production-ready—it’s a playground for learning and experimenting with event-driven patterns. If you’re exploring event sourcing and want to see how these ideas work in practice, give it a try!
 
-### How to deploy
-
-#### Prerequisites
-
-1. Ensure your AWS credentials are setup for the AWS environment where you want to deploy the example
-2. `npm install`
-
-#### Deploying an example
-
-2. `cd <example dir>`
-3. `npx cdk deploy`
-
-The example will be deployed to your AWS account
-
-#### Destroying an example
-
-2. `cd <example dir>`
-3. `npx cdk destroy`
-
-The example will be removed from your AWS account
-
-### counter
-
-Simple counters implemented using event sourcing and CQRS.
-
-This is a good introduction to Aeon event stores, event sourcing, and CQRS, and it isn't intended to be a "realistic" example. You can increment and decrement a counter by posting to the Command API, and get the current value of a counter from the Query API.
-
-```sh
-# Increment and decrement a counter named my-counter
-> curl --json '{"key":"my-counter", "type":"increment" }' <commandUrl from cdk output>
-<event store commit revision>
-
-> curl --json '{"key":"my-counter", "type":"increment" }' <commandUrl from cdk output>
-<event store commit revision>
-
-> curl --json '{"key":"my-counter", "type":"decrement" }' <commandUrl from cdk output>
-<event store commit revision>
-
-> curl --json '{"key":"my-counter", "type":"increment" }' <commandUrl from cdk output>
-<event store commit revision>
-
-# Query my-counter
-> curl '<queryUrl from cdk output>?key=1'
-{"decrements":1,"value":3,"key":"1","increments":4}
-```
-
-### counter-notify
-
-_WIP_
-
-### counter-snapshot
