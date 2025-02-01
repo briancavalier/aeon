@@ -34,9 +34,9 @@ export type Pending<D> = {
 
 The Pending type represents an event that has been created but not yet committed to the event store.
 
-	•	`type`: The type of the event.
-	•	`correlationId` (optional): A unique identifier for correlating events.
-	•	`data`: The event data.
+* `type`: The type of the event.
+* `correlationId` (optional): A unique identifier for correlating events.
+* `data`: The event data.
 
 ### Committed
 
@@ -51,10 +51,10 @@ export type Committed<D> = Pending<D> & {
 
 The Committed type extends Pending by adding information about the event’s position, key, slice, and the timestamp when it was committed to the event store.
 
-	•	`key`: The unique identifier for the event in the event store.
-	•	`slice`: The slice that the event belongs to.
-	•	`position`: The position of the event within the store.
-	•	`committedAt`: The timestamp when the event was committed.
+* `key`: The unique identifier for the event in the event store.
+* `slice`: The slice that the event belongs to.
+* `position`: The position of the event within the store.
+* `committedAt`: The timestamp when the event was committed.
 
 ### Position
 
@@ -80,11 +80,11 @@ export type RangeInput = {
 
 The RangeInput type defines the range for reading events in the event store, with optional start and end positions, exclusivity flags, and a limit on the number of events.
 
-	•	`start` (optional): Position to start reading from.
-	•	`startExclusive` (optional): If true, excludes the start position.
-	•	`end` (optional): Position to stop reading at.
-	•	`endExclusive` (optional): If true, excludes the end position.
-	•	`limit` (optional): Maximum number of events to retrieve.
+* `start` (optional): Position to start reading from.
+* `startExclusive` (optional): If true, excludes the start position.
+* `end` (optional): Position to stop reading at.
+* `endExclusive` (optional): If true, excludes the end position.
+* `limit` (optional): Maximum number of events to retrieve.
 
 ## API
 
