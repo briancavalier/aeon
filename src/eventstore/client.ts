@@ -1,7 +1,7 @@
 import { AttributeValue, DynamoDBClient, paginateQuery, QueryCommand, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
 import { ok as assert } from 'node:assert'
 import { monotonicFactory, } from 'ulid'
-import { ensureInclusive, InclusiveRange, Position, RangeInput } from './position'
+import { end, ensureInclusive, InclusiveRange, Position, RangeInput, start } from './position'
 import { getSlice, Slice } from './slice'
 import { marshall, NativeAttributeValue, unmarshall } from '@aws-sdk/util-dynamodb'
 import { Pending, Committed } from './event'
@@ -61,7 +61,7 @@ export type AppendKeyOptions = Readonly<{
  * the events are only written once even if the same request is retried.
  */
 export const append = async <const D extends NativeAttributeValue>(es: EventStoreClient, key: string, events: readonly Pending<D>[], {
-  expectedPosition,
+  expectedPosition = end,
   idempotencyKey
 }: AppendKeyOptions = {}
 ): Promise<AppendResult> => {
@@ -90,6 +90,7 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
   })
 
   const newPosition = items[items.length - 1].Put.Item.position.S
+  console.log({ msg: 'Appending events', key, expectedPosition, newPosition })
   try {
     const result = await es.client.send(new TransactWriteItemsCommand({
       ClientRequestToken: idempotencyKey,
@@ -103,14 +104,15 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
               sk: { S: 'state' },
               position: { S: newPosition }
             },
-            ...expectedPosition ? {
-              ConditionExpression: '#position = :expectedPosition',
-              ExpressionAttributeNames: { '#position': 'position' },
-              ExpressionAttributeValues: { ':expectedPosition': { S: expectedPosition } }
-            } : {
-              ConditionExpression: 'attribute_not_exists(#position)',
-              ExpressionAttributeNames: { '#position': 'position' }
-            }
+            ...expectedPosition === end ? {}
+              : expectedPosition === start ? {
+                ConditionExpression: 'attribute_not_exists(#position)',
+                ExpressionAttributeNames: { '#position': 'position' },
+              } : {
+                ConditionExpression: '#position = :expectedPosition',
+                ExpressionAttributeNames: { '#position': 'position' },
+                ExpressionAttributeValues: { ':expectedPosition': { S: expectedPosition } }
+              }
           }
         },
         {
@@ -181,9 +183,9 @@ export async function* readAll<A>(es: EventStoreClient, r: RangeInput = {}): Asy
   }
 }
 
-export const readForAppend = async <A>(es: EventStoreClient, key: string, r: RangeInput = {}): Promise<readonly [Position | undefined, AsyncIterable<Committed<A>>]> => {
+export const readForAppend = async <A>(es: EventStoreClient, key: string, r: RangeInput = {}): Promise<readonly [Position, AsyncIterable<Committed<A>>]> => {
   const latest = await readLatest(es, key)
-  return [latest?.position, read<A>(es, key, { end: latest?.position, ...r })]
+  return [latest?.position ?? start, read<A>(es, key, { end: latest?.position ?? end, ...r })]
 }
 
 /**
