@@ -8,12 +8,12 @@ import { resolve } from 'node:path'
 import { EventBusNotifier, EventBusSubscription, IEventStore } from '../../src/aws-cdk'
 import { commonFunctionEnv, commonFunctionProps } from '../aws-defaults'
 
-export interface CounterNotifyStackProps extends StackProps {
+export interface CounterCQRSStackProps extends StackProps {
   eventStore: IEventStore
 }
 
-export class CounterNotifyStack extends Stack {
-  constructor(scope: Construct, id: string, props: CounterNotifyStackProps) {
+export class CounterCQRSStack extends Stack {
+  constructor(scope: Construct, id: string, props: CounterCQRSStackProps) {
     super(scope, id, props)
 
     const eventBus = new EventBus(this, 'all-events')
