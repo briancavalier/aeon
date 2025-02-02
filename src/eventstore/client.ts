@@ -78,7 +78,7 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
           slice: { S: getSlice(position) },
           key: { S: key },
           committedAt: { S: committedAt },
-          correlationId: { S: e.correlationId ?? position },
+          correlationId: e.correlationId ? { S: e.correlationId } : { NULL: true },
           position: { S: position },
           type: { S: e.type },
           data: { M: marshall(e.data) }
@@ -185,7 +185,7 @@ export async function* readAll<A>(es: EventStoreClient, r: RangeInput = {}): Asy
 
 export const readForAppend = async <A>(es: EventStoreClient, key: string, r: RangeInput = {}): Promise<readonly [Position, AsyncIterable<Committed<A>>]> => {
   const latest = await readLatest(es, key)
-  return [latest?.position ?? start, read<A>(es, key, { end: latest?.position ?? end, ...r })]
+  return [latest?.position ?? start, read<A>(es, key, { end: latest?.position, ...r })]
 }
 
 /**

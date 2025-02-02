@@ -2,8 +2,8 @@ import { nextBase32, prevBase32 } from './base32'
 
 export type Position = string & { readonly type: 'Position' }
 
-export const start = '##########################' as Position
-export const end = 'ZZZZZZZZZZZZZZZZZZZZZZZZZZ' as Position
+export const start = '0' as Position
+export const end = 'Z' as Position
 
 const min = '00000000000000000000000000' as Position
 const max = '7ZZZZZZZZZZZZZZZZZZZZZZZZZ' as Position

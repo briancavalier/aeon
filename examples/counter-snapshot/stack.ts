@@ -35,5 +35,6 @@ export class CounterSnapshotStack extends Stack {
     })
 
     new CfnOutput(this, 'commandUrl', { value: commandUrl.url })
+    new CfnOutput(this, 'commandLogGroup', { value: command.logGroup.logGroupName })
   }
 }

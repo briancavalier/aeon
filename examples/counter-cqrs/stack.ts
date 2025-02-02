@@ -72,5 +72,6 @@ export class CounterCQRSStack extends Stack {
     })
 
     new CfnOutput(this, 'queryUrl', { value: queryUrl.url })
+    new CfnOutput(this, 'queryLogGroup', { value: query.logGroup.logGroupName })
   }
 }

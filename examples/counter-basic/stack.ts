@@ -59,5 +59,7 @@ export class CounterStack extends Stack {
 
     new CfnOutput(this, 'commandUrl', { value: commandUrl.url })
     new CfnOutput(this, 'queryUrl', { value: queryUrl.url })
+    new CfnOutput(this, 'commandLogGroup', { value: command.logGroup.logGroupName })
+    new CfnOutput(this, 'queryLogGroup', { value: query.logGroup.logGroupName })
   }
 }
