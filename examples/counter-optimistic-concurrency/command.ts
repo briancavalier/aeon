@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { append, fromConfigString, Position, readForAppend, read, readLatest } from '../../src/eventstore'
+import { append, fromConfigString, readForAppend } from '../../src/eventstore'
 import { CounterCommand, CounterEvent, decide, initialValue, update } from '../counter-basic/domain'
 
 assert(process.env.eventStoreConfig)

@@ -1,4 +1,4 @@
-import { AttributeValue, DynamoDBClient, paginateQuery, QueryCommand, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
+import { AttributeValue, DynamoDBClient, GetItemCommand, paginateQuery, QueryCommand, QueryCommandInput, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
 import { ok as assert } from 'node:assert'
 import { monotonicFactory, } from 'ulid'
 import { end, ensureInclusive, InclusiveRange, Position, RangeInput, start } from './position'
@@ -184,8 +184,12 @@ export async function* readAll<A>(es: EventStoreClient, r: RangeInput = {}): Asy
 }
 
 export const readForAppend = async <A>(es: EventStoreClient, key: string, r: RangeInput = {}): Promise<readonly [Position, AsyncIterable<Committed<A>>]> => {
-  const latest = await readLatest(es, key)
-  return [latest?.position ?? start, read<A>(es, key, { end: latest?.position, ...r })]
+  const position = await es.client.send(new GetItemCommand({
+    TableName: es.metadataTable,
+    Key: { pk: { S: key }, sk: { S: 'state' } }
+  })).then(({ Item }) => Item?.position.S as Position | undefined)
+
+  return [position ?? start, read<A>(es, key, { end: position, ...r })]
 }
 
 /**
