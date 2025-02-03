@@ -7,6 +7,6 @@ const app = new App()
 
 const { eventStore } = new CounterStack(app, 'counter')
 new CounterCQRSStack(app, 'counter-notify', { eventStore })
-new CounterOptimisticConcurrencyStack(app, 'counter-snapshot', { eventStore })
+new CounterOptimisticConcurrencyStack(app, 'counter-optimistic-concurrency', { eventStore })
 
 app.synth()

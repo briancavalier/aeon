@@ -1,12 +1,16 @@
 import { strict as assert } from 'node:assert'
 import { describe, it } from 'node:test'
 import { nextBase32, prevBase32 } from './base32'
-import { ensureInclusive, Position } from './position'
+import { ensureInclusive, max, min, Position } from './position'
+
 describe(ensureInclusive.name, () => {
   it('given startExclusive and endExclusive are not set, returns the same range', () => {
     const range = { start: 'A' as Position, end: 'B' as Position }
     const result = ensureInclusive(range)
-    assert.deepEqual(result, range)
+    assert.deepEqual(result, {
+      ...range,
+      limit: Infinity
+    })
   })
 
   it('given startExclusive is true, adjusts the start position', () => {
@@ -33,21 +37,21 @@ describe(ensureInclusive.name, () => {
   it('given both start and end are omitted, returns the same range', () => {
     const range = {}
     const result = ensureInclusive(range)
-    assert.equal(result.start, undefined)
-    assert.equal(result.end, undefined)
+    assert.equal(result.start, min)
+    assert.equal(result.end, max)
   })
 
   it('given only start is present, returns the same range', () => {
     const range = { start: 'A' as Position }
     const result = ensureInclusive(range)
     assert.equal(result.start, 'A')
-    assert.equal(result.end, undefined)
+    assert.equal(result.end, max)
   })
 
-  it('given only end is present, returns the same range', () => {
+  it.only('given only end is present, returns the same range', () => {
     const range = { end: 'B' as Position }
     const result = ensureInclusive(range)
-    assert.equal(result.start, undefined)
+    assert.equal(result.start, min)
     assert.equal(result.end, 'B')
   })
 })

@@ -5,8 +5,8 @@ export type Position = string & { readonly type: 'Position' }
 export const start = '0' as Position
 export const end = 'Z' as Position
 
-const min = '00000000000000000000000000' as Position
-const max = '7ZZZZZZZZZZZZZZZZZZZZZZZZZ' as Position
+export const min = '00000000000000000000000000' as Position
+export const max = '7ZZZZZZZZZZZZZZZZZZZZZZZZZ' as Position
 
 /**
  * Inclusive range of positions from start to end. Start and end
@@ -51,19 +51,3 @@ export const ensureInclusive = (r: RangeInput): InclusiveRange => ({
         : r.end,
   limit: r.limit ?? Infinity
 })
-
-// export type Range = {
-//   readonly start: Position
-//   readonly startExclusive?: boolean
-//   readonly end: Position
-//   readonly endExclusive?: boolean
-// }
-
-/**
- * Given a {@link Range}, adjust the start and end positions
- * to be inclusive, based on `startExclusive` and `endExclusive`
- */
-// export const ensureInclusive = (r: Partial<Range>): Partial<Range> => ({
-//   start: r.start && r.startExclusive ? nextBase32(r.start) : r.start,
-//   end: r.end && r.endExclusive ? prevBase32(r.end) : r.end
-// })
