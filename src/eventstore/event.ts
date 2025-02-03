@@ -8,7 +8,6 @@ export type Pending<D> = {
 
 export type Committed<D> = Pending<D> & {
   readonly key: string
-  readonly slice: string
   readonly position: Position
   readonly committedAt: string
 }

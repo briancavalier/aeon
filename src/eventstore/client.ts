@@ -263,7 +263,6 @@ async function* getSlices(es: EventStoreClient, range: InclusiveRange): AsyncIte
 }
 
 const toEvent = <A>(item: Record<string, AttributeValue>): Committed<A> => ({
-  slice: item.slice.S,
   key: item.key.S,
   type: item.type.S,
   position: item.position.S,
