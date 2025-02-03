@@ -90,7 +90,6 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
   })
 
   const newPosition = items[items.length - 1].Put.Item.position.S
-  console.log({ msg: 'Appending events', key, expectedPosition, newPosition })
   try {
     const result = await es.client.send(new TransactWriteItemsCommand({
       ClientRequestToken: idempotencyKey,
