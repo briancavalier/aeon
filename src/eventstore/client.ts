@@ -1,4 +1,4 @@
-import { AttributeValue, DynamoDBClient, GetItemCommand, paginateQuery, QueryCommand, QueryCommandInput, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
+import { AttributeValue, DynamoDBClient, GetItemCommand, paginateQuery, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
 import { ok as assert } from 'node:assert'
 import { monotonicFactory, } from 'ulid'
 import { end, ensureInclusive, InclusiveRange, Position, RangeInput, start } from './position'
@@ -154,7 +154,6 @@ export async function* readAll<A>(es: EventStoreClient, r: RangeInput = {}): Asy
   let remaining = range.limit
   for await (const page of slices) {
     for (const slice of page) {
-      console.log({ msg: "Reading slice", slice })
       const results = paginateQuery(es,
         {
           TableName: es.eventsTable,
@@ -168,6 +167,7 @@ export async function* readAll<A>(es: EventStoreClient, r: RangeInput = {}): Asy
             ':start': { S: range.start },
             ':end': { S: range.end }
           },
+          ScanIndexForward: range.direction === 'forward'
         })
 
       for await (const { Items = [] } of results) {
@@ -178,7 +178,6 @@ export async function* readAll<A>(es: EventStoreClient, r: RangeInput = {}): Asy
         yield* Items.map(toEvent<A>)
       }
     }
-
   }
 }
 
@@ -217,7 +216,8 @@ export async function* read<A>(es: EventStoreClient, key: string, r: RangeInput 
         ':key': { S: key },
         ...(start && { ':start': { S: start } }),
         ...(end && { ':end': { S: end } })
-      }
+      },
+      ScanIndexForward: r.direction === 'forward'
     })
 
   for await (const { Items = [] } of results)
@@ -229,17 +229,8 @@ export async function* read<A>(es: EventStoreClient, key: string, r: RangeInput 
  * useful to peek at the latest event or position for a key.
  */
 export const readLatest = async <A>(es: EventStoreClient, key: string): Promise<Committed<A> | undefined> => {
-  const { Items = [] } = await es.client.send(new QueryCommand({
-    TableName: es.eventsTable,
-    IndexName: es.byKeyPositionIndexName,
-    KeyConditionExpression: '#key = :key',
-    ExpressionAttributeNames: { '#key': 'key' },
-    ExpressionAttributeValues: { ':key': { S: key } },
-    Limit: 1,
-    ScanIndexForward: false
-  }))
-
-  return Items[0] && toEvent<A>(Items[0])
+  const results = read<A>(es, key, { limit: 1, direction: 'backward' })
+  for await (const event of results) return event
 }
 
 async function* getSlices(es: EventStoreClient, range: InclusiveRange): AsyncIterable<readonly Slice[]> {
@@ -255,6 +246,7 @@ async function* getSlices(es: EventStoreClient, range: InclusiveRange): AsyncIte
       ':start': { S: getSlice(range.start) },
       ':end': { S: getSlice(range.end) },
     },
+    ScanIndexForward: range.direction === 'forward'
   })
 
   for await (const { Items = [] } of pages)

@@ -4,6 +4,7 @@ import assert from 'node:assert'
 import { fromConfig, Notification, Position, readAll } from '../../src/eventstore'
 import { CounterEvent } from '../counter-basic/domain'
 import { getRevision, updateRevision } from './revision'
+import { filter } from '../../src/eventstore/async-iterable'
 
 assert(process.env.viewTable)
 
@@ -21,8 +22,11 @@ export const handler = async ({ eventStoreConfig, end }: Notification) => {
   // need to read events between that and end.
   const start = await getRevision(client, table) ?? ''
 
-  // Read events between last seen and end
-  const events = readAll<CounterEvent>(store, { start, startExclusive: true, end })
+  // Read counter events between last seen and end
+  const events = filter(
+    readAll<CounterEvent>(store, { start, startExclusive: true, end }),
+    ({ key }) => key.startsWith('counter/'), 
+  )
 
   console.debug({ eventStoreConfig, start, end })
 

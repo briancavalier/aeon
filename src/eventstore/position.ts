@@ -20,6 +20,7 @@ export type RangeInput = {
   readonly end?: Position
   readonly endExclusive?: boolean
   readonly limit?: number
+  readonly direction?: 'forward' | 'backward'
 }
 
 /**
@@ -32,6 +33,7 @@ export type InclusiveRange = {
   start: Position
   end: Position
   limit: number
+  direction: 'forward' | 'backward'
 }
 
 /**
@@ -49,5 +51,6 @@ export const ensureInclusive = (r: RangeInput): InclusiveRange => ({
     : (!r.end || r.end === end) ? max
       : r.endExclusive ? prevBase32(r.end)
         : r.end,
-  limit: r.limit ?? Infinity
+  limit: r.limit ?? Infinity,
+  direction: r.direction ?? 'forward'
 })
