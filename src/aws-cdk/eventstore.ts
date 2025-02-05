@@ -17,19 +17,23 @@ export interface IEventStore {
 export type EventStoreProps = {
   readonly removalPolicy?: RemovalPolicy,
   readonly billingMode?: BillingMode
+  readonly byKeyPositionIndexName?: string
 }
+
+const defaultByKeyPositionIndexName = 'by-key-position'
 
 export class EventStore extends Construct implements IEventStore {
   public readonly name: string
   public readonly eventsTable: ITable
-  public readonly byKeyPositionIndexName = 'by-key-position'
+  public readonly byKeyPositionIndexName: string
   public readonly metadataTable: ITable
   public readonly config: string
 
-  constructor(scope: Construct, id: string, tableProps: EventStoreProps) {
+  constructor(scope: Construct, id: string, { byKeyPositionIndexName, ...tableProps }: EventStoreProps) {
     super(scope, id)
 
     this.name = id
+    this.byKeyPositionIndexName = byKeyPositionIndexName ?? defaultByKeyPositionIndexName
 
     const eventsTable = new Table(scope, `${id}-table`, {
       partitionKey: { name: 'slice', type: AttributeType.STRING },

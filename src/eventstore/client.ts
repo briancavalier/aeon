@@ -5,6 +5,7 @@ import { end, ensureInclusive, InclusiveRange, Position, RangeInput, start } fro
 import { getSlice, Slice } from './slice'
 import { marshall, NativeAttributeValue, unmarshall } from '@aws-sdk/util-dynamodb'
 import { Pending, Committed } from './event'
+import { paginate } from './dynamodb'
 
 export interface EventStoreClient {
   readonly name: string
@@ -151,10 +152,9 @@ export async function* readAll<A>(es: EventStoreClient, r: RangeInput = {}): Asy
 
   const slices = getSlices(es, range)
 
-  let remaining = range.limit
   for await (const page of slices) {
     for (const slice of page) {
-      const results = paginateQuery(es,
+      const results = paginate(es.client, range.limit,
         {
           TableName: es.eventsTable,
           KeyConditionExpression: '#slice = :slice AND #position between :start AND :end',
@@ -170,13 +170,7 @@ export async function* readAll<A>(es: EventStoreClient, r: RangeInput = {}): Asy
           ScanIndexForward: range.direction === 'forward'
         })
 
-      for await (const { Items = [] } of results) {
-        if (remaining <= Items.length)
-          return yield* Items.slice(0, remaining).map(toEvent<A>)
-
-        remaining -= Items.length
-        yield* Items.map(toEvent<A>)
-      }
+      for await (const item of results) yield toEvent<A>(item)
     }
   }
 }
@@ -196,11 +190,11 @@ export const readForAppend = async <A>(es: EventStoreClient, key: string, r: Ran
  * end of the event store.  Omit range entirely to read all events for the specified key.
  */
 export async function* read<A>(es: EventStoreClient, key: string, r: RangeInput = {}): AsyncIterable<Committed<A>> {
-  const { start, end } = ensureInclusive(r)
+  const range = ensureInclusive(r)
 
-  if (start && end && start > end) return
+  if (range.start && range.end && range.start > range.end) return
 
-  const results = paginateQuery(es,
+  const results = paginate(es.client, range.limit,
     {
       TableName: es.eventsTable,
       IndexName: es.byKeyPositionIndexName,
@@ -220,8 +214,7 @@ export async function* read<A>(es: EventStoreClient, key: string, r: RangeInput 
       ScanIndexForward: r.direction === 'forward'
     })
 
-  for await (const { Items = [] } of results)
-    yield* Items.map(toEvent<A>)
+  for await (const item of results) yield toEvent<A>(item)
 }
 
 /**

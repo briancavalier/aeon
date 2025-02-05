@@ -9,7 +9,8 @@ describe(ensureInclusive.name, () => {
     const result = ensureInclusive(range)
     assert.deepEqual(result, {
       ...range,
-      limit: Infinity
+      limit: Infinity,
+      direction: 'forward'
     })
   })
 
