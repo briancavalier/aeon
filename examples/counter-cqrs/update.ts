@@ -20,7 +20,7 @@ export const handler = async ({ eventStoreConfig, end }: Notification) => {
 
   // Maintain latest seen event position, so we only
   // need to read events between that and end.
-  const start = await getRevision(client, table) ?? ''
+  const start = await getRevision(client, table)
 
   // Read counter events between last seen and end
   const events = filter(

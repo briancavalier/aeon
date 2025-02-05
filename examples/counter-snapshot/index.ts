@@ -5,8 +5,8 @@ import { CounterSnapshotStack } from './stack'
 
 const app = new App()
 
-const { eventStore } = new CounterStack(app, 'counter')
-new CounterCQRSStack(app, 'counter-notify', { eventStore })
+const { eventStore } = new CounterStack(app, 'counter-basic')
+new CounterCQRSStack(app, 'counter-cqrs', { eventStore })
 new CounterSnapshotStack(app, 'counter-snapshot', { eventStore })
 
 app.synth()

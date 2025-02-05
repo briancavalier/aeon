@@ -24,7 +24,6 @@ export class CounterCQRSStack extends Stack {
       applicationLogLevelV2: ApplicationLogLevel.DEBUG,
     })
 
-
     // -------------------------------------------
     // View
 
