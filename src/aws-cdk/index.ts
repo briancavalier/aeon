@@ -1,2 +1,2 @@
-export * from './eventbridge'
-export * from './eventstore'
+export * from './EventStoreSubscription'
+export * from './EventStore'

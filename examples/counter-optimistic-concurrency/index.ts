@@ -1,11 +1,11 @@
 import { App } from 'aws-cdk-lib'
 import { CounterCQRSStack } from '../counter-cqrs/stack'
-import { CounterStack } from '../counter-basic/stack'
 import { CounterOptimisticConcurrencyStack } from './stack'
+import { CounterEventStoreStack } from '../shared-eventstore-stack'
 
 const app = new App()
 
-const { eventStore } = new CounterStack(app, 'counter-basic')
+const { eventStore } = new CounterEventStoreStack(app, 'counter-events')
 new CounterCQRSStack(app, 'counter-cqrs', { eventStore })
 new CounterOptimisticConcurrencyStack(app, 'counter-optimistic-concurrency', { eventStore })
 

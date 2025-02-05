@@ -1,25 +1,18 @@
-import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib'
-import { BillingMode } from 'aws-cdk-lib/aws-dynamodb'
+import { CfnOutput, Stack, StackProps } from 'aws-cdk-lib'
 import { FunctionUrlAuthType } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { Construct } from 'constructs'
 import { resolve } from 'node:path'
-import { EventStore, IEventStore } from '../../src/aws-cdk'
+import { IEventStore } from '../../src/aws-cdk'
 import { commonFunctionEnv, commonFunctionProps } from '../aws-defaults'
 
+export interface CounterStackProps extends StackProps {
+  eventStore: IEventStore
+}
+
 export class CounterStack extends Stack {
-  public readonly eventStore: IEventStore
-
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, { eventStore, ...props }: CounterStackProps) {
     super(scope, id, props)
-
-    // -------------------------------------------
-    // Event store
-
-    const counterEventStore = this.eventStore = new EventStore(this, 'counter-events', {
-      removalPolicy: RemovalPolicy.DESTROY,
-      billingMode: BillingMode.PAY_PER_REQUEST
-    })
 
     // -------------------------------------------
     // Aggregate
@@ -29,11 +22,11 @@ export class CounterStack extends Stack {
       entry: resolve(__dirname, 'command.ts'),
       environment: {
         ...commonFunctionEnv,
-        eventStoreConfig: counterEventStore.config
+        eventStoreConfig: eventStore.config
       }
     })
 
-    counterEventStore.grantReadWriteEvents(command)
+    eventStore.grantReadWriteEvents(command)
 
     const commandUrl = command.addFunctionUrl({
       authType: FunctionUrlAuthType.NONE,
@@ -47,11 +40,11 @@ export class CounterStack extends Stack {
       entry: resolve(__dirname, 'query.ts'),
       environment: {
         ...commonFunctionEnv,
-        eventStoreConfig: counterEventStore.config
+        eventStoreConfig: eventStore.config
       }
     })
 
-    counterEventStore.grantReadEvents(query)
+    eventStore.grantReadEvents(query)
 
     const queryUrl = query.addFunctionUrl({
       authType: FunctionUrlAuthType.NONE,

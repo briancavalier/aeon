@@ -1,7 +1,10 @@
 import { App } from 'aws-cdk-lib'
 import { CounterStack } from './stack'
+import { CounterEventStoreStack } from '../shared-eventstore-stack'
 
 const app = new App()
-new CounterStack(app, 'counter')
+
+const { eventStore } = new CounterEventStoreStack(app, 'counter-events')
+new CounterStack(app, 'counter-basic', { eventStore })
 
 app.synth()

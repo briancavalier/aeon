@@ -1,11 +1,10 @@
 import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib'
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb'
-import { EventBus } from 'aws-cdk-lib/aws-events'
-import { ApplicationLogLevel, FunctionUrlAuthType } from 'aws-cdk-lib/aws-lambda'
+import { FunctionUrlAuthType } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { Construct } from 'constructs'
 import { resolve } from 'node:path'
-import { EventBusNotifier, EventBusSubscription, IEventStore } from '../../src/aws-cdk'
+import { EventStoreSubscription, IEventStore } from '../../src/aws-cdk'
 import { commonFunctionEnv, commonFunctionProps } from '../aws-defaults'
 
 export interface CounterCQRSStackProps extends StackProps {
@@ -15,14 +14,6 @@ export interface CounterCQRSStackProps extends StackProps {
 export class CounterCQRSStack extends Stack {
   constructor(scope: Construct, id: string, props: CounterCQRSStackProps) {
     super(scope, id, props)
-
-    const eventBus = new EventBus(this, 'all-events')
-
-    new EventBusNotifier(this, 'counter-events-notifier', {
-      eventStore: props.eventStore,
-      eventBus,
-      applicationLogLevelV2: ApplicationLogLevel.DEBUG,
-    })
 
     // -------------------------------------------
     // View
@@ -38,18 +29,14 @@ export class CounterCQRSStack extends Stack {
       entry: resolve(__dirname, 'update.ts'),
       environment: {
         ...commonFunctionEnv,
-        eventStoreConfig: props.eventStore.config,
         viewTable: counterView.tableName
       }
     })
 
     counterView.grantReadWriteData(update)
-    props.eventStore.grantReadEvents(update)
-
-    new EventBusSubscription(this, 'counter-events-subscription', {
-      eventBus,
+    new EventStoreSubscription(this, 'counter-update-subscription', {
       eventStore: props.eventStore,
-      subscriber: update,
+      handler: update
     })
 
     // -------------------------------------------
