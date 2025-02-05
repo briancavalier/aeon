@@ -62,7 +62,6 @@ The Pending type represents an event that has been created but not yet committed
 ```ts
 export type Committed<D> = Pending<D> & {
   readonly key: string
-  readonly slice: string
   readonly position: Position
   readonly committedAt: string
 }
@@ -71,7 +70,6 @@ export type Committed<D> = Pending<D> & {
 The Committed type extends Pending by adding information about the event’s position, key, slice, and the timestamp when it was committed to the event store.
 
 * `key`: The unique identifier for the event in the event store.
-* `slice`: The slice that the event belongs to.
 * `position`: The position of the event within the store.
 * `committedAt`: The timestamp when the event was committed.
 
@@ -94,6 +92,7 @@ export type RangeInput = {
   readonly end?: Position
   readonly endExclusive?: boolean
   readonly limit?: number
+  readonly direction?: 'forward' | 'backward'
 }
 ```
 
@@ -104,6 +103,7 @@ The RangeInput type defines the range for reading events in the event store, wit
 * `end` (optional): Position to stop reading at.
 * `endExclusive` (optional): If true, excludes the end position.
 * `limit` (optional): Maximum number of events to retrieve.
+* `direction` (optional, default 'forward'): If 'forward', reads events in chronological order.  If 'backward', reads events in _reverse_ chronological order.
 
 ## API
 
