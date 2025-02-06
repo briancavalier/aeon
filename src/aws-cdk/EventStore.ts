@@ -14,6 +14,7 @@ export interface IEventStore {
   readonly eventsTable: ITable
   readonly metadataTable: ITable
   readonly eventBus: IEventBus
+
   readonly config: string
 
   grantReadEvents(g: IGrantable): void
@@ -38,6 +39,7 @@ export class EventStore extends Construct implements IEventStore {
   public readonly eventBus: IEventBus
   public readonly notifier: IFunction
   public readonly logLevel?: ApplicationLogLevel
+
   public readonly config: string
 
   constructor(scope: Construct, id: string, { byKeyPositionIndexName, eventBus, logLevel, ...tableProps }: EventStoreProps) {
@@ -46,10 +48,11 @@ export class EventStore extends Construct implements IEventStore {
     this.name = id
     this.byKeyPositionIndexName = byKeyPositionIndexName ?? defaultByKeyPositionIndexName
     this.logLevel = logLevel
+    
     const eventsTable = new Table(scope, `${id}-table`, {
       partitionKey: { name: 'slice', type: AttributeType.STRING },
       sortKey: { name: 'position', type: AttributeType.STRING },
-      stream: StreamViewType.KEYS_ONLY,
+      stream: StreamViewType.NEW_IMAGE,
       ...tableProps,
     })
 
@@ -77,8 +80,7 @@ export class EventStore extends Construct implements IEventStore {
 
     this.eventBus = eventBus
     
-    this.notifier = new NodejsFunction(scope, `${id}-handler`, {
-      // FIXME: How to use import.meta.dirname here?
+    this.notifier = new NodejsFunction(scope, `${id}-notifier`, {
       entry: resolve(__dirname, './notify.ts'),
       runtime: Runtime.NODEJS_22_X,
       loggingFormat: LoggingFormat.JSON,

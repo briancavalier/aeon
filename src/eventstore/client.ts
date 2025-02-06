@@ -5,7 +5,9 @@ import { end, ensureInclusive, InclusiveRange, Position, RangeInput, start } fro
 import { getSlice, Slice } from './slice'
 import { marshall, NativeAttributeValue, unmarshall } from '@aws-sdk/util-dynamodb'
 import { Pending, Committed } from './event'
-import { paginate } from './dynamodb'
+import { paginate } from './dynamodb/paginate'
+import { Filter } from './filter'
+import { toFilterExpression } from './dynamodb/filter-expression'
 
 export interface EventStoreClient {
   readonly name: string
@@ -141,14 +143,20 @@ const mapTransactionError = (e: unknown): AppendResult =>
     ? { type: 'aborted/optimistic-concurrency', error: e }
     : { type: 'aborted/unknown', error: e }
 
+type ReadInput = RangeInput & Readonly<{
+  filter?: Filter<string>
+}>
+
 /**
  * Read a range of all events from the event store. Range is inclusive, and omitting
  * start will read from the beginning, and ommitting end will read to end of the
  * event store.  Omit range entirely to read all events.
  */
-export async function* readAll<A>(es: EventStoreClient, r: RangeInput = {}): AsyncIterable<Committed<A>> {
+export async function* readAll<A>(es: EventStoreClient, { filter, ...r }: ReadInput = {}): AsyncIterable<Committed<A>> {
   const range = ensureInclusive(r)
   if (range.limit <= 0 || range.start > range.end) return
+
+  const f = filter ? toFilterExpression(filter) : {}
 
   const slices = getSlices(es, range)
 
@@ -158,11 +166,14 @@ export async function* readAll<A>(es: EventStoreClient, r: RangeInput = {}): Asy
         {
           TableName: es.eventsTable,
           KeyConditionExpression: '#slice = :slice AND #position between :start AND :end',
+          FilterExpression: f.FilterExpression,
           ExpressionAttributeNames: {
+            ...f.ExpressionAttributeNames,
             '#slice': 'slice',
             '#position': 'position'
           },
           ExpressionAttributeValues: {
+            ...f.ExpressionAttributeValues,
             ':slice': { S: slice },
             ':start': { S: range.start },
             ':end': { S: range.end }
@@ -175,7 +186,7 @@ export async function* readAll<A>(es: EventStoreClient, r: RangeInput = {}): Asy
   }
 }
 
-export const readForAppend = async <A>(es: EventStoreClient, key: string, r: RangeInput = {}): Promise<readonly [Position, AsyncIterable<Committed<A>>]> => {
+export const readForAppend = async <A>(es: EventStoreClient, key: string, r: ReadInput = {}): Promise<readonly [Position, AsyncIterable<Committed<A>>]> => {
   const position = await es.client.send(new GetItemCommand({
     TableName: es.metadataTable,
     Key: { pk: { S: key }, sk: { S: 'state' } }
@@ -189,10 +200,12 @@ export const readForAppend = async <A>(es: EventStoreClient, key: string, r: Ran
  * and omitting start will read from the beginning, and ommitting end will read to
  * end of the event store.  Omit range entirely to read all events for the specified key.
  */
-export async function* read<A>(es: EventStoreClient, key: string, r: RangeInput = {}): AsyncIterable<Committed<A>> {
+export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r }: ReadInput = {}): AsyncIterable<Committed<A>> {
   const range = ensureInclusive(r)
 
   if (range.start && range.end && range.start > range.end) return
+
+  const f = filter ? toFilterExpression(filter) : {}
 
   const results = paginate(es.client, range.limit,
     {
@@ -202,11 +215,14 @@ export async function* read<A>(es: EventStoreClient, key: string, r: RangeInput 
         : start ? 'AND #position >= :start'
           : end ? 'AND #position <= :end'
             : ''}`,
+      FilterExpression: f.FilterExpression,
       ExpressionAttributeNames: {
+        ...f.ExpressionAttributeNames,
         '#key': 'key',
         ...((start || end) && { '#position': 'position' })
       },
       ExpressionAttributeValues: {
+        ...f.ExpressionAttributeValues,
         ':key': { S: key },
         ...(start && { ':start': { S: start } }),
         ...(end && { ':end': { S: end } })

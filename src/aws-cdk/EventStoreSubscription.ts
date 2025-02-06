@@ -1,4 +1,4 @@
-import { EventPattern, IEventBus, IRule, Rule, RuleTargetInput } from 'aws-cdk-lib/aws-events'
+import { IRule, Rule, RuleTargetInput } from 'aws-cdk-lib/aws-events'
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets'
 import { IFunction } from 'aws-cdk-lib/aws-lambda'
 import { Construct } from 'constructs'
@@ -7,7 +7,7 @@ import { IEventStore } from './EventStore'
 export interface EventStoreSubscriptionProps {
   readonly eventStore: IEventStore
   readonly handler: IFunction
-  readonly eventPattern?: EventPattern
+  readonly keys?: readonly string[]
 }
 
 export class EventStoreSubscription extends Construct {
@@ -15,7 +15,7 @@ export class EventStoreSubscription extends Construct {
   constructor(scope: Construct, id: string, {
     eventStore,
     handler,
-    eventPattern
+    keys
   }: EventStoreSubscriptionProps) {
     super(scope, id)
 
@@ -24,8 +24,11 @@ export class EventStoreSubscription extends Construct {
       targets: [new LambdaFunction(handler, {
         event: RuleTargetInput.fromEventPath('$.detail')
       })],
-      eventPattern: eventPattern ?? {
+      eventPattern: {
         source: [eventStore.name],
+        detail: keys ? {
+          keys: keys.map(key => key.match(/\*/g) ? ({ wildcard: key }) : key)
+        } : undefined
       }
     })
 

@@ -1,8 +1,9 @@
 import { RemovalPolicy, Stack } from "aws-cdk-lib"
-import { EventBus, IEventBus } from "aws-cdk-lib/aws-events"
+import { EventBus } from "aws-cdk-lib/aws-events"
 import { Construct } from "constructs"
 import { EventStore, IEventStore } from "../src/aws-cdk"
 import { BillingMode } from "aws-cdk-lib/aws-dynamodb"
+import { ApplicationLogLevel } from "aws-cdk-lib/aws-lambda"
 
 export class CounterEventStoreStack extends Stack {
   public readonly eventStore: IEventStore
@@ -21,6 +22,7 @@ export class CounterEventStoreStack extends Stack {
     this.eventStore = new EventStore(this, `${id}-eventstore`, {
       removalPolicy: RemovalPolicy.DESTROY,
       billingMode: BillingMode.PAY_PER_REQUEST,
+      logLevel: ApplicationLogLevel.DEBUG,
       eventBus
     })
   }

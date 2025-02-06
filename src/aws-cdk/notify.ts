@@ -18,8 +18,10 @@ export const handler = ({ Records }: DynamoDBStreamEvent) => {
     dynamodb?.Keys?.position?.S && dynamodb.Keys.position.S > end
       ? dynamodb.Keys.position.S : end, '')
 
-  const notification = { eventStoreConfig, end }
-  console.debug({ msg: 'Notifying', notification })
+  const keys = [...new Set(Records.map(({ dynamodb }) => dynamodb?.NewImage?.key?.S).filter((k): k is string => !!k))]
+
+  const notification = { eventStoreConfig, end, keys }
+  console.debug({ msg: 'Notifying', ...notification })
 
   return client.send(new PutEventsCommand({
     Entries: [{

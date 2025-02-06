@@ -36,7 +36,8 @@ export class CounterCQRSStack extends Stack {
     counterView.grantReadWriteData(update)
     new EventStoreSubscription(this, 'counter-update-subscription', {
       eventStore: props.eventStore,
-      handler: update
+      handler: update,
+      keys: ['counter/*']
     })
 
     // -------------------------------------------
