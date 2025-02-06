@@ -33,7 +33,7 @@
     "@aws-sdk/client-eventbridge": "^3.738.0",
     "@aws-sdk/lib-dynamodb": "^3.734.0",
     "@types/aws-lambda": "^8.10.147",
-    "@types/node": "^22.12.0",
+    "@types/node": "^22.13.0",
     "aws-cdk": "^2.177.0",
     "aws-cdk-lib": "^2.177.0",
     "aws-lambda": "^1.0.7",
