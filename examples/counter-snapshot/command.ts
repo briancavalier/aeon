@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { append, EventStoreClient, fromConfigString, Revision, readForAppend, read, readLatest, reduce } from '../../src/eventstore'
+import { append, fromConfigString, read, reduce, first, head } from '../../src/eventstore'
 import { CounterCommand, CounterEvent, decide, initialValue, update } from '../counter-basic/domain'
 import { CounterSnapshot, snapshotRange } from './counter-snapshot'
 
@@ -20,10 +20,12 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   // Read the latest snapshot from the snapshot store
   // If there are no snapshots yet, this will return undefined
-  const snapshot = await readLatest<CounterSnapshot>(
+  const snapshotRevision = await head(store, `counter-snapshot/${command.key}`)
+  const snapshot = await first(read<CounterSnapshot>(
     store,
-    `counter-snapshot/${command.key}`
-  )
+    `counter-snapshot/${command.key}`,
+    { start: snapshotRevision, end: snapshotRevision, limit: 1 }
+  ))
 
   // Compute the range of events we need to read
   // If the snapshot exists, start reading from its revision
@@ -31,12 +33,13 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const range = snapshotRange(snapshot?.data)
   console.debug({ snapshot, range })
 
-  const [latest, history] = await readForAppend<CounterEvent>(store, `counter/${command.key}`, range)
+  const latest = await head(store, `counter/${command.key}`)
+  const history = read<CounterEvent>(store, `counter/${command.key}`, { ...range, end: latest })
 
   // Rebuild the counter's current value
-  // If we have a snapshot, start from its value
-  // Otherwise, start from the initial value
-  // Rebuild the counter's current value
+  // If we have a snapshot, start from its value. Otherwise, start
+  // from the initial value. We'll also count the number of events
+  // as we go, so we know when to take a new snapshot.
   const [value, count] = await reduce(
     history,
     ([value, count], event) => [update(value, event.data), count + 1],
@@ -50,38 +53,29 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const events = decide(value, command)
   const eventCount = count + events.length
 
-  const timestamp = new Date().toISOString()
-
   // Append the new events to the event store
   // This returns the revision of the last event appended
   const result = await append(
     store,
     `counter/${command.key}`,
-    events.map(data => ({ ...data, timestamp, data })),
+    events.map(data => ({ ...data, data })),
     { expectedRevision: latest }
   )
 
-  // If we wrote some new events (revision !== undefined), and
-  // it's time to take a new snapshot, compute the latest
-  // snapshot value and append it to the snapshot store.
+  // If we wrote some new events, and it's time to take
+  // a new snapshot, compute the latest snapshot value and
+  // append it to the snapshot store.
   if (result.type === 'appended' && result.count > 0 && eventCount >= maxEventsBetweenSnapshots) {
     const newValue = events.reduce(update, value)
-    console.debug({ msg: 'Adding new snapshot', newValue, timestamp, revision: result.revision })
+    console.debug({ msg: 'Adding new snapshot', newValue, revision: result.revision })
 
-    await appendNewSnapshot(store, command.key, newValue, timestamp, result.revision)
+    await append(store, `counter-snapshot/${command.key}`, [{
+      type: 'snapshot-created',
+      data: { revision: result.revision, value: newValue }
+    }], { expectedRevision: snapshotRevision })
   } else {
     console.debug({ msg: 'Not adding new snapshot', eventCount, maxEventsBetweenSnapshots })
   }
 
   return { statusCode: result.type === 'appended' ? 200 : 409, body: result }
-}
-
-const appendNewSnapshot = async (s: EventStoreClient, key: string, value: number, timestamp: string, revision?: Revision) => {
-  const newSnapshot = {
-    type: 'snapshot-created',
-    timestamp,
-    data: { revision, value }
-  }
-
-  return append(s, `counter-snapshot/${key}`, [newSnapshot])
 }

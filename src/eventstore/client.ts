@@ -186,12 +186,14 @@ export async function* readAll<A>(es: EventStoreClient, { filter, ...r }: ReadIn
   }
 }
 
-export const readForAppend = async <A>(es: EventStoreClient, key: string, r: ReadInput = {}): Promise<readonly [Revision, AsyncIterable<Committed<A>>]> => {
-  const revision = await es.client.send(new GetItemCommand({
+export const head = async (es: EventStoreClient, key: string): Promise<Revision> =>
+  es.client.send(new GetItemCommand({
     TableName: es.metadataTable,
     Key: { pk: { S: key }, sk: { S: 'state' } }
-  })).then(({ Item }) => Item?.revision.S as Revision | undefined)
+  })).then(({ Item }) => Item?.revision.S as Revision)
 
+export const readForAppend = async <A>(es: EventStoreClient, key: string, r: ReadInput = {}): Promise<readonly [Revision, AsyncIterable<Committed<A>>]> => {
+  const revision = await head(es, key)
   return [revision ?? start, read<A>(es, key, { end: revision, ...r })]
 }
 
@@ -231,15 +233,6 @@ export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r
     })
 
   for await (const item of results) yield toEvent<A>(item)
-}
-
-/**
- * Read the most recent event for the provided key. This can be
- * useful to peek at the latest event or revision for a key.
- */
-export const readLatest = async <A>(es: EventStoreClient, key: string): Promise<Committed<A> | undefined> => {
-  const results = read<A>(es, key, { limit: 1, direction: 'backward' })
-  for await (const event of results) return event
 }
 
 async function* getSlices(es: EventStoreClient, range: InclusiveRange): AsyncIterable<readonly Slice[]> {

@@ -14,21 +14,21 @@ describe(ensureInclusive.name, () => {
     })
   })
 
-  it('given startExclusive is true, adjusts the start position', () => {
+  it('given startExclusive is true, adjusts the start revision', () => {
     const range = { start: 'A' as Revision, startExclusive: true, end: 'B' as Revision }
     const result = ensureInclusive(range)
     assert.equal(result.start, nextBase32('A'))
     assert.equal(result.end, 'B')
   })
 
-  it('given endExclusive is true, adjusts the end position', () => {
+  it('given endExclusive is true, adjusts the end revision', () => {
     const range = { start: 'A' as Revision, end: 'B' as Revision, endExclusive: true }
     const result = ensureInclusive(range)
     assert.equal(result.start, 'A')
     assert.equal(result.end, prevBase32('B'))
   })
 
-  it('given both startExclusive and endExclusive are true, adjusts both start and end positions', () => {
+  it('given both startExclusive and endExclusive are true, adjusts both start and end revision', () => {
     const range = { start: 'A' as Revision, startExclusive: true, end: 'B' as Revision, endExclusive: true }
     const result = ensureInclusive(range)
     assert.equal(result.start, nextBase32('A'))
