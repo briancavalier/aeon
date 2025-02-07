@@ -58,7 +58,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const result = await append(
     store,
     `counter/${command.key}`,
-    events.map(data => ({ ...data, data })),
+    events.map(data => ({ ...data, category: 'counter', data })),
     { expectedRevision: latest }
   )
 
@@ -71,6 +71,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
     await append(store, `counter-snapshot/${command.key}`, [{
       type: 'snapshot-created',
+      category: 'counter-snapshot',
       data: { revision: result.revision, value: newValue }
     }], { expectedRevision: snapshotRevision })
   } else {

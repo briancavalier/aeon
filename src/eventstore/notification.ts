@@ -3,6 +3,6 @@ import { Revision } from './revision'
 
 export type Notification = Readonly<{
   eventStoreConfig: EventStoreConfig,
+  category: string
   end: Revision
-  keys: readonly string[]
 }>

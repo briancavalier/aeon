@@ -2,6 +2,7 @@ import { Revision } from './revision';
 
 export type Pending<D> = {
   readonly type: string
+  readonly category?: string
   readonly correlationId?: string
   readonly data: D
 }

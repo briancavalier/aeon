@@ -29,5 +29,5 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   // Append the new events to the event store
   // This returns the revision of the last event appended
-  return append(store, `counter/${command.key}`, events.map(data => ({ ...data, data })))
+  return append(store, `counter/${command.key}`, events.map(data => ({ ...data, category: 'counter', data })))
 }

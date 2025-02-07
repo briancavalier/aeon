@@ -7,7 +7,7 @@ import { IEventStore } from './EventStore'
 export interface EventStoreSubscriptionProps {
   readonly eventStore: IEventStore
   readonly handler: IFunction
-  readonly keys?: readonly string[]
+  readonly categories?: readonly string[]
 }
 
 export class EventStoreSubscription extends Construct {
@@ -15,7 +15,7 @@ export class EventStoreSubscription extends Construct {
   constructor(scope: Construct, id: string, {
     eventStore,
     handler,
-    keys
+    categories
   }: EventStoreSubscriptionProps) {
     super(scope, id)
 
@@ -26,8 +26,8 @@ export class EventStoreSubscription extends Construct {
       })],
       eventPattern: {
         source: [eventStore.name],
-        detail: keys ? {
-          keys: keys.map(key => key.match(/\*/g) ? ({ wildcard: key }) : key)
+        detail: categories ? {
+          category: categories.map(s => s.match(/\*/g) ? ({ wildcard: s }) : s)
         } : undefined
       }
     })

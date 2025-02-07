@@ -1,8 +1,7 @@
-import { AttributeValue, DynamoDBClient, GetItemCommand, paginateQuery, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
+import { AttributeValue, DynamoDBClient, GetItemCommand, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
 import { ok as assert } from 'node:assert'
 import { monotonicFactory, } from 'ulid'
-import { end, ensureInclusive, InclusiveRange, Revision, RangeInput, start } from './revision'
-import { getSlice, Slice } from './slice'
+import { end, ensureInclusive, Revision, RangeInput, start } from './revision'
 import { marshall, NativeAttributeValue, unmarshall } from '@aws-sdk/util-dynamodb'
 import { Pending, Committed } from './event'
 import { paginate } from './dynamodb/paginate'
@@ -13,7 +12,7 @@ export interface EventStoreClient {
   readonly name: string
   readonly eventsTable: string
   readonly metadataTable: string
-  readonly byKeyRevisionIndexName: string
+  readonly byCategoryRevisionIndexName: string
   readonly client: DynamoDBClient
   readonly nextRevision: (epochMilliseconds: number) => Revision
 }
@@ -22,7 +21,7 @@ export type EventStoreConfig = {
   readonly name: string,
   readonly eventsTable: string
   readonly metadataTable: string
-  readonly byKeyRevisionIndexName: string
+  readonly byCategoryRevisionIndexName: string
 }
 
 export const fromConfig = (config: EventStoreConfig, client: DynamoDBClient, nextRevision?: (epochMilliseconds?: number) => Revision): EventStoreClient => ({
@@ -41,10 +40,11 @@ export const parseConfig = (configString: string): EventStoreConfig => {
     assert(typeof config.name === 'string', 'name must be a string')
     assert(typeof config.eventsTable === 'string', 'eventsTable must be a string')
     assert(typeof config.metadataTable === 'string', 'metadataTable must be a string')
-    assert(typeof config.byKeyRevisionIndexName === 'string', 'byKeyRevisionIndexName must be a string')
+    assert(typeof config.byCategoryRevisionIndexName === 'string', 'byKeyRevisionIndexName must be a string')
     return config
   } catch (e) {
-    throw new Error(`Invalid configString: ${configString}`, { cause: e })
+    throw e
+    // throw new Error(`Invalid configString: ${configString}`, { cause: e })
   }
 }
 
@@ -74,25 +74,28 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
   const committedAt = new Date(now).toISOString()
   const items = events.map(e => {
     const revision = es.nextRevision(now)
+    const item: Record<string, AttributeValue> = {
+      key: { S: key },
+      revision: { S: revision },
+      committedAt: { S: committedAt },
+      type: { S: e.type },
+      data: { M: marshall(e.data) }
+    }
+
+    if(e.category) item.category = { S: e.category }
+    if(e.correlationId) item.correlationId = { S: e.correlationId }
+
     return {
       Put: {
         TableName: es.eventsTable,
-        Item: {
-          slice: { S: getSlice(revision) },
-          key: { S: key },
-          committedAt: { S: committedAt },
-          correlationId: e.correlationId ? { S: e.correlationId } : { NULL: true },
-          revision: { S: revision },
-          type: { S: e.type },
-          data: { M: marshall(e.data) }
-        },
+        Item: item,
         ConditionExpression: 'attribute_not_exists(#key)',
         ExpressionAttributeNames: { '#key': 'key' }
       }
     }
   })
 
-  const newRevision = items[items.length - 1].Put.Item.revision.S
+  const newRevision = items[items.length - 1].Put.Item.revision.S as Revision
   try {
     const result = await es.client.send(new TransactWriteItemsCommand({
       ClientRequestToken: idempotencyKey,
@@ -117,15 +120,6 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
               }
           }
         },
-        {
-          Put: {
-            TableName: es.metadataTable,
-            Item: {
-              pk: { S: 'slice' },
-              sk: { S: getSlice(es.nextRevision(now)) },
-            }
-          }
-        },
         ...items,
       ]
     }))
@@ -146,45 +140,6 @@ const mapTransactionError = (e: unknown): AppendResult =>
 type ReadInput = RangeInput & Readonly<{
   filter?: Filter<string>
 }>
-
-/**
- * Read a range of all events from the event store. Range is inclusive, and omitting
- * start will read from the beginning, and ommitting end will read to end of the
- * event store.  Omit range entirely to read all events.
- */
-export async function* readAll<A>(es: EventStoreClient, { filter, ...r }: ReadInput = {}): AsyncIterable<Committed<A>> {
-  const range = ensureInclusive(r)
-  if (range.limit <= 0 || range.start > range.end) return
-
-  const f = filter ? toFilterExpression(filter) : {}
-
-  const slices = getSlices(es, range)
-
-  for await (const page of slices) {
-    for (const slice of page) {
-      const results = paginate(es.client, range.limit,
-        {
-          TableName: es.eventsTable,
-          KeyConditionExpression: '#slice = :slice AND #revision between :start AND :end',
-          FilterExpression: f.FilterExpression,
-          ExpressionAttributeNames: {
-            ...f.ExpressionAttributeNames,
-            '#slice': 'slice',
-            '#revision': 'revision'
-          },
-          ExpressionAttributeValues: {
-            ...f.ExpressionAttributeValues,
-            ':slice': { S: slice },
-            ':start': { S: range.start },
-            ':end': { S: range.end }
-          },
-          ScanIndexForward: range.direction === 'forward'
-        })
-
-      for await (const item of results) yield toEvent<A>(item)
-    }
-  }
-}
 
 export const head = async (es: EventStoreClient, key: string): Promise<Revision> =>
   es.client.send(new GetItemCommand({
@@ -207,7 +162,6 @@ export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r
   const results = paginate(es.client, range.limit,
     {
       TableName: es.eventsTable,
-      IndexName: es.byKeyRevisionIndexName,
       KeyConditionExpression: `#key = :key ${start && end ? 'AND #revision between :start AND :end'
         : start ? 'AND #revision >= :start'
           : end ? 'AND #revision <= :end'
@@ -230,31 +184,50 @@ export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r
   for await (const item of results) yield toEvent<A>(item)
 }
 
-async function* getSlices(es: EventStoreClient, range: InclusiveRange): AsyncIterable<readonly Slice[]> {
-  const pages = paginateQuery(es, {
-    TableName: es.metadataTable,
-    KeyConditionExpression: '#pk = :pk and #sk between :start and :end',
-    ExpressionAttributeNames: {
-      '#pk': 'pk',
-      '#sk': 'sk'
-    },
-    ExpressionAttributeValues: {
-      ':pk': { S: 'slice' },
-      ':start': { S: getSlice(range.start) },
-      ':end': { S: getSlice(range.end) },
-    },
-    ScanIndexForward: range.direction === 'forward'
-  })
+/**
+ * Read a range of events for a specific key from the event store. Range is inclusive,
+ * and omitting start will read from the beginning, and ommitting end will read to
+ * end of the event store.  Omit range entirely to read all events for the specified key.
+ */
+export async function* readCategory<A>(es: EventStoreClient, category: string, { filter, ...r }: ReadInput = {}): AsyncIterable<Committed<A>> {
+  const range = ensureInclusive(r)
 
-  for await (const { Items = [] } of pages)
-    yield Items.map(item => item.sk.S as Slice)
+  if (range.start && range.end && range.start > range.end) return
+
+  const f = filter ? toFilterExpression(filter) : {}
+
+  const results = paginate(es.client, range.limit,
+    {
+      TableName: es.eventsTable,
+      IndexName: es.byCategoryRevisionIndexName,
+      KeyConditionExpression: `#category = :category ${start && end ? 'AND #revision between :start AND :end'
+        : start ? 'AND #revision >= :start'
+          : end ? 'AND #revision <= :end'
+            : ''}`,
+      FilterExpression: f.FilterExpression,
+      ExpressionAttributeNames: {
+        ...f.ExpressionAttributeNames,
+        '#category': 'category',
+        ...((start || end) && { '#revision': 'revision' })
+      },
+      ExpressionAttributeValues: {
+        ...f.ExpressionAttributeValues,
+        ':category': { S: category },
+        ...(start && { ':start': { S: start } }),
+        ...(end && { ':end': { S: end } })
+      },
+      ScanIndexForward: r.direction === 'forward'
+    })
+
+  for await (const item of results) yield toEvent<A>(item)
 }
 
 const toEvent = <A>(item: Record<string, AttributeValue>): Committed<A> => ({
   key: item.key.S,
   type: item.type.S,
+  category: item.category?.S,
   revision: item.revision.S,
-  correlationId: item.correlationId.S,
+  correlationId: item.correlationId?.S,
   committedAt: item.committedAt.S,
   data: item.data?.M && unmarshall(item.data.M)
 } as Committed<A>)

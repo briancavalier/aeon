@@ -1,7 +1,7 @@
 import { DynamoDBClient, ReturnValue } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import assert from 'node:assert'
-import { fromConfig, Notification, Revision, prefix, readAll } from '../../src/eventstore'
+import { fromConfig, Notification, Revision, prefix, readCategory } from '../../src/eventstore'
 import { CounterEvent } from '../counter-basic/domain'
 import { getRevision, updateRevision } from './revision'
 
@@ -14,21 +14,20 @@ const docClient = DynamoDBDocumentClient.from(client)
 // Build an optimized view of counters incrementally
 // from events. This allows queries to be answered simply
 // by getting the answer directly from the view table.
-export const handler = async ({ eventStoreConfig, end, keys }: Notification) => {
+export const handler = async ({ eventStoreConfig, end, category }: Notification) => {
   const store = fromConfig(eventStoreConfig, client)
 
-  console.debug({ eventStoreConfig, end, keys })
+  console.debug({ eventStoreConfig, end, category })
 
   // Maintain latest seen event revision, so we only
   // need to read events between that and end.
-  const start = await getRevision(client, table)
+  const start = await getRevision(client, table, category)
 
   // Read counter events between last seen and end
-  const events = readAll<CounterEvent>(store, {
+  const events = readCategory<CounterEvent>(store, category, {
     start,
     startExclusive: true,
-    end,
-    filter: prefix('key', 'counter/')
+    end
   })
 
   console.debug({ eventStoreConfig, start, end })
@@ -41,7 +40,7 @@ export const handler = async ({ eventStoreConfig, end, keys }: Notification) => 
 
   // Update the last seen revision, so we don't need
   // to read the same events again.
-  await updateRevision(docClient, table, end)
+  await updateRevision(docClient, table, category, end)
     .catch(logConditionFailed(`Ignoring old revision update: ${end}`))
 }
 

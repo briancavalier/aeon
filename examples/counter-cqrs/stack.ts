@@ -37,7 +37,7 @@ export class CounterCQRSStack extends Stack {
     new EventStoreSubscription(this, 'counter-update-subscription', {
       eventStore: props.eventStore,
       handler: update,
-      keys: ['counter/*']
+      categories: ['counter']
     })
 
     // -------------------------------------------

@@ -24,17 +24,17 @@ export interface IEventStore {
 export type EventStoreProps = {
   readonly removalPolicy?: RemovalPolicy,
   readonly billingMode?: BillingMode
-  readonly byKeyRevisionIndexName?: string
+  readonly byCategoryRevisionIndexName?: string
   readonly eventBus: IEventBus
   readonly logLevel?: ApplicationLogLevel
 }
 
-const defaultByKeyRevisionIndexName = 'by-key-revision'
+const defaultByKeyRevisionIndexName = 'by-category-revision'
 
 export class EventStore extends Construct implements IEventStore {
   public readonly name: string
   public readonly eventsTable: ITable
-  public readonly byKeyRevisionIndexName: string
+  public readonly byCategoryRevisionIndexName: string
   public readonly metadataTable: ITable
   public readonly eventBus: IEventBus
   public readonly notifier: IFunction
@@ -42,23 +42,23 @@ export class EventStore extends Construct implements IEventStore {
 
   public readonly config: string
 
-  constructor(scope: Construct, id: string, { byKeyRevisionIndexName, eventBus, logLevel, ...tableProps }: EventStoreProps) {
+  constructor(scope: Construct, id: string, { byCategoryRevisionIndexName: byKeyRevisionIndexName, eventBus, logLevel, ...tableProps }: EventStoreProps) {
     super(scope, id)
 
     this.name = id
-    this.byKeyRevisionIndexName = byKeyRevisionIndexName ?? defaultByKeyRevisionIndexName
+    this.byCategoryRevisionIndexName = byKeyRevisionIndexName ?? defaultByKeyRevisionIndexName
     this.logLevel = logLevel
 
     const eventsTable = new Table(scope, `${id}-table`, {
-      partitionKey: { name: 'slice', type: AttributeType.STRING },
+      partitionKey: { name: 'key', type: AttributeType.STRING },
       sortKey: { name: 'revision', type: AttributeType.STRING },
       stream: StreamViewType.NEW_IMAGE,
       ...tableProps,
     })
 
     eventsTable.addGlobalSecondaryIndex({
-      indexName: this.byKeyRevisionIndexName,
-      partitionKey: { name: 'key', type: AttributeType.STRING },
+      indexName: this.byCategoryRevisionIndexName,
+      partitionKey: { name: 'category', type: AttributeType.STRING },
       sortKey: { name: 'revision', type: AttributeType.STRING }
     })
 
@@ -75,7 +75,7 @@ export class EventStore extends Construct implements IEventStore {
       name: this.name,
       eventsTable: this.eventsTable.tableName,
       metadataTable: this.metadataTable.tableName,
-      byKeyRevisionIndexName: this.byKeyRevisionIndexName,
+      byCategoryRevisionIndexName: this.byCategoryRevisionIndexName,
     })
 
     this.eventBus = eventBus

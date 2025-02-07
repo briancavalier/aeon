@@ -13,22 +13,25 @@ const client = new EventBridgeClient()
 export const handler = ({ Records }: DynamoDBStreamEvent) => {
   if (Records.length === 0) return
 
-  // Find the latest revision in the batch
-  const end = Records.reduce((end, { dynamodb }) =>
-    dynamodb?.Keys?.revision?.S && dynamodb.Keys.revision.S > end
-      ? dynamodb.Keys.revision.S : end, '')
+  // Find the keys and latest revision of each category
+  const categories = Records.reduce((n, { dynamodb }) => {
+    const category = dynamodb?.NewImage?.category?.S
+    if(!category) return n
 
-  const keys = [...new Set(Records.map(({ dynamodb }) => dynamodb?.NewImage?.key?.S).filter((k): k is string => !!k))]
+    n[category] = dynamodb.Keys?.revision?.S as string
+    return n
+  }, {} as Record<string, string>)
 
-  const notification = { eventStoreConfig, end, keys }
-  console.debug({ msg: 'Notifying', ...notification })
+  console.debug({ msg: 'Notifying', ...categories })
 
-  return client.send(new PutEventsCommand({
-    Entries: [{
+  // Notify each category of the latest revision
+  const entries = Object.entries(categories).map(([category, end]) =>
+    ({
       EventBusName: process.env.eventBusName,
-      Detail: JSON.stringify(notification),
+      Detail: JSON.stringify({ eventStoreConfig, category, end }),
       DetailType: 'appended',
       Source: eventStoreConfig.name,
-    }]
-  }))
+    }))
+
+  return client.send(new PutEventsCommand({ Entries: entries }))
 }
