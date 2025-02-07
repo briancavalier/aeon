@@ -1,7 +1,7 @@
 import { DynamoDBClient, ReturnValue } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import assert from 'node:assert'
-import { fromConfig, Notification, Position, prefix, readAll } from '../../src/eventstore'
+import { fromConfig, Notification, Revision, prefix, readAll } from '../../src/eventstore'
 import { CounterEvent } from '../counter-basic/domain'
 import { getRevision, updateRevision } from './revision'
 
@@ -19,7 +19,7 @@ export const handler = async ({ eventStoreConfig, end, keys }: Notification) => 
 
   console.debug({ eventStoreConfig, end, keys })
 
-  // Maintain latest seen event position, so we only
+  // Maintain latest seen event revision, so we only
   // need to read events between that and end.
   const start = await getRevision(client, table)
 
@@ -36,7 +36,7 @@ export const handler = async ({ eventStoreConfig, end, keys }: Notification) => 
   // Update the view table incrementally
   for await (const { data, ...meta } of events) {
     console.info(meta)
-    await updateCounter(docClient, table, data, meta.position)
+    await updateCounter(docClient, table, data, meta.revision)
   }
 
   // Update the last seen revision, so we don't need
@@ -45,7 +45,7 @@ export const handler = async ({ eventStoreConfig, end, keys }: Notification) => 
     .catch(logConditionFailed(`Ignoring old revision update: ${end}`))
 }
 
-export const updateCounter = (ddb: DynamoDBDocumentClient, table: string, { key, type }: CounterEvent, revision: Position) =>
+export const updateCounter = (ddb: DynamoDBDocumentClient, table: string, { key, type }: CounterEvent, revision: Revision) =>
   ddb.send(new UpdateCommand({
     TableName: table,
     Key: { pk: key },

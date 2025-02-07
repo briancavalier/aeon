@@ -1,8 +1,8 @@
 import { EventStoreConfig } from './client'
-import { Position } from './position'
+import { Revision } from './revision'
 
 export type Notification = Readonly<{
   eventStoreConfig: EventStoreConfig,
-  end: Position
+  end: Revision
   keys: readonly string[]
 }>

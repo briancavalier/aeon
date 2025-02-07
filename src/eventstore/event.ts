@@ -1,4 +1,4 @@
-import { Position } from './position';
+import { Revision } from './revision';
 
 export type Pending<D> = {
   readonly type: string
@@ -8,6 +8,6 @@ export type Pending<D> = {
 
 export type Committed<D> = Pending<D> & {
   readonly key: string
-  readonly position: Position
+  readonly revision: Revision
   readonly committedAt: string
 }

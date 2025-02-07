@@ -28,6 +28,6 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const events = decide(value, command)
 
   // Append the new events to the event store
-  // This returns the commit position of the last event appended
+  // This returns the revision of the last event appended
   return append(store, `counter/${command.key}`, events.map(data => ({ ...data, data })))
 }

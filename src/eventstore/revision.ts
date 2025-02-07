@@ -1,43 +1,43 @@
 import { nextBase32, prevBase32 } from './base32'
 
-export type Position = string & { readonly type: 'Position' }
+export type Revision = string & { readonly type: 'Revision' }
 
-export const start = '0' as Position
-export const end = 'Z' as Position
+export const start = '0' as Revision
+export const end = 'Z' as Revision
 
-export const min = '00000000000000000000000000' as Position
-export const max = '7ZZZZZZZZZZZZZZZZZZZZZZZZZ' as Position
+export const min = '00000000000000000000000000' as Revision
+export const max = '7ZZZZZZZZZZZZZZZZZZZZZZZZZ' as Revision
 
 /**
- * Inclusive range of positions from start to end. Start and end
+ * Range of revisions from start to end. Start and end
  * are inclusive by default, but can be made exclusive by
  * setting `startExclusive` and/or `endExclusive` to true,
  * respectively.
  */
 export type RangeInput = {
-  readonly start?: Position
+  readonly start?: Revision
   readonly startExclusive?: boolean
-  readonly end?: Position
+  readonly end?: Revision
   readonly endExclusive?: boolean
   readonly limit?: number
   readonly direction?: 'forward' | 'backward'
 }
 
 /**
- * Inclusive range of positions from start to end. Start and end
+ * Inclusive range of revisions from start to end. Start and end
  * are inclusive by default, but can be made exclusive by
  * setting `startExclusive` and/or `endExclusive` to true,
  * respectively.
  */
 export type InclusiveRange = {
-  start: Position
-  end: Position
+  start: Revision
+  end: Revision
   limit: number
   direction: 'forward' | 'backward'
 }
 
 /**
- * Given a {@link RangeInput}, adjust the start and end positions
+ * Given a {@link RangeInput}, adjust the start and end revisions
  * to be inclusive, based on `startExclusive` and `endExclusive`,
  * and the limit to always have a value, using Infinity if not
  * specified.

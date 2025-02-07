@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { append, EventStoreClient, fromConfigString, Position, readForAppend, read, readLatest, reduce } from '../../src/eventstore'
+import { append, EventStoreClient, fromConfigString, Revision, readForAppend, read, readLatest, reduce } from '../../src/eventstore'
 import { CounterCommand, CounterEvent, decide, initialValue, update } from '../counter-basic/domain'
 import { CounterSnapshot, snapshotRange } from './counter-snapshot'
 
@@ -53,22 +53,22 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const timestamp = new Date().toISOString()
 
   // Append the new events to the event store
-  // This returns the commit position of the last event appended
+  // This returns the revision of the last event appended
   const result = await append(
     store,
     `counter/${command.key}`,
     events.map(data => ({ ...data, timestamp, data })),
-    { expectedPosition: latest }
+    { expectedRevision: latest }
   )
 
-  // If we wrote some new events (position !== undefined), and
+  // If we wrote some new events (revision !== undefined), and
   // it's time to take a new snapshot, compute the latest
   // snapshot value and append it to the snapshot store.
   if (result.type === 'appended' && result.count > 0 && eventCount >= maxEventsBetweenSnapshots) {
     const newValue = events.reduce(update, value)
-    console.debug({ msg: 'Adding new snapshot', newValue, timestamp, position: result.position })
+    console.debug({ msg: 'Adding new snapshot', newValue, timestamp, revision: result.revision })
 
-    await appendNewSnapshot(store, command.key, newValue, timestamp, result.position)
+    await appendNewSnapshot(store, command.key, newValue, timestamp, result.revision)
   } else {
     console.debug({ msg: 'Not adding new snapshot', eventCount, maxEventsBetweenSnapshots })
   }
@@ -76,7 +76,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   return { statusCode: result.type === 'appended' ? 200 : 409, body: result }
 }
 
-const appendNewSnapshot = async (s: EventStoreClient, key: string, value: number, timestamp: string, revision?: Position) => {
+const appendNewSnapshot = async (s: EventStoreClient, key: string, value: number, timestamp: string, revision?: Revision) => {
   const newSnapshot = {
     type: 'snapshot-created',
     timestamp,

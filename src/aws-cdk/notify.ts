@@ -13,10 +13,10 @@ const client = new EventBridgeClient()
 export const handler = ({ Records }: DynamoDBStreamEvent) => {
   if (Records.length === 0) return
 
-  // Find the highest position in the batch
+  // Find the latest revision in the batch
   const end = Records.reduce((end, { dynamodb }) =>
-    dynamodb?.Keys?.position?.S && dynamodb.Keys.position.S > end
-      ? dynamodb.Keys.position.S : end, '')
+    dynamodb?.Keys?.revision?.S && dynamodb.Keys.revision.S > end
+      ? dynamodb.Keys.revision.S : end, '')
 
   const keys = [...new Set(Records.map(({ dynamodb }) => dynamodb?.NewImage?.key?.S).filter((k): k is string => !!k))]
 

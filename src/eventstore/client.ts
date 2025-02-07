@@ -1,7 +1,7 @@
 import { AttributeValue, DynamoDBClient, GetItemCommand, paginateQuery, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
 import { ok as assert } from 'node:assert'
 import { monotonicFactory, } from 'ulid'
-import { end, ensureInclusive, InclusiveRange, Position, RangeInput, start } from './position'
+import { end, ensureInclusive, InclusiveRange, Revision, RangeInput, start } from './revision'
 import { getSlice, Slice } from './slice'
 import { marshall, NativeAttributeValue, unmarshall } from '@aws-sdk/util-dynamodb'
 import { Pending, Committed } from './event'
@@ -13,26 +13,26 @@ export interface EventStoreClient {
   readonly name: string
   readonly eventsTable: string
   readonly metadataTable: string
-  readonly byKeyPositionIndexName: string
+  readonly byKeyRevisionIndexName: string
   readonly client: DynamoDBClient
-  readonly nextPosition: (epochMilliseconds: number) => Position
+  readonly nextRevision: (epochMilliseconds: number) => Revision
 }
 
 export type EventStoreConfig = {
   readonly name: string,
   readonly eventsTable: string
   readonly metadataTable: string
-  readonly byKeyPositionIndexName: string
+  readonly byKeyRevisionIndexName: string
 }
 
-export const fromConfig = (config: EventStoreConfig, client: DynamoDBClient, nextPosition?: (epochMilliseconds?: number) => Position): EventStoreClient => ({
+export const fromConfig = (config: EventStoreConfig, client: DynamoDBClient, nextRevision?: (epochMilliseconds?: number) => Revision): EventStoreClient => ({
   ...config,
   client,
-  nextPosition: nextPosition ?? monotonicFactory() as (t: number) => Position
+  nextRevision: nextRevision ?? monotonicFactory() as (t: number) => Revision
 })
 
-export const fromConfigString = (configString: string, client: DynamoDBClient, nextPosition?: (epochMilliseconds?: number) => Position): EventStoreClient =>
-  fromConfig(parseConfig(configString), client, nextPosition)
+export const fromConfigString = (configString: string, client: DynamoDBClient, nextRevision?: (epochMilliseconds?: number) => Revision): EventStoreClient =>
+  fromConfig(parseConfig(configString), client, nextRevision)
 
 export const parseConfig = (configString: string): EventStoreConfig => {
   try {
@@ -41,7 +41,7 @@ export const parseConfig = (configString: string): EventStoreConfig => {
     assert(typeof config.name === 'string', 'name must be a string')
     assert(typeof config.eventsTable === 'string', 'eventsTable must be a string')
     assert(typeof config.metadataTable === 'string', 'metadataTable must be a string')
-    assert(typeof config.byKeyPositionIndexName === 'string', 'byKeyPositionIndexName must be a string')
+    assert(typeof config.byKeyRevisionIndexName === 'string', 'byKeyRevisionIndexName must be a string')
     return config
   } catch (e) {
     throw new Error(`Invalid configString: ${configString}`, { cause: e })
@@ -50,12 +50,12 @@ export const parseConfig = (configString: string): EventStoreConfig => {
 
 export type AppendResult =
   | Readonly<{ type: 'unchanged' }>
-  | Readonly<{ type: 'appended', count: number, position: Position }>
+  | Readonly<{ type: 'appended', count: number, revision: Revision }>
   | Readonly<{ type: 'aborted/optimistic-concurrency', error: Error }>
   | Readonly<{ type: 'aborted/unknown', error: unknown }>
 
 export type AppendKeyOptions = Readonly<{
-  expectedPosition?: Position,
+  expectedRevision?: Revision,
   idempotencyKey?: string
 }>
 
@@ -64,7 +64,7 @@ export type AppendKeyOptions = Readonly<{
  * the events are only written once even if the same request is retried.
  */
 export const append = async <const D extends NativeAttributeValue>(es: EventStoreClient, key: string, events: readonly Pending<D>[], {
-  expectedPosition = end,
+  expectedRevision = end,
   idempotencyKey
 }: AppendKeyOptions = {}
 ): Promise<AppendResult> => {
@@ -73,16 +73,16 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
   const now = Date.now()
   const committedAt = new Date(now).toISOString()
   const items = events.map(e => {
-    const position = es.nextPosition(now)
+    const revision = es.nextRevision(now)
     return {
       Put: {
         TableName: es.eventsTable,
         Item: {
-          slice: { S: getSlice(position) },
+          slice: { S: getSlice(revision) },
           key: { S: key },
           committedAt: { S: committedAt },
           correlationId: e.correlationId ? { S: e.correlationId } : { NULL: true },
-          position: { S: position },
+          revision: { S: revision },
           type: { S: e.type },
           data: { M: marshall(e.data) }
         },
@@ -92,7 +92,7 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
     }
   })
 
-  const newPosition = items[items.length - 1].Put.Item.position.S
+  const newRevision = items[items.length - 1].Put.Item.revision.S
   try {
     const result = await es.client.send(new TransactWriteItemsCommand({
       ClientRequestToken: idempotencyKey,
@@ -104,16 +104,16 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
             Item: {
               pk: { S: key },
               sk: { S: 'state' },
-              position: { S: newPosition }
+              revision: { S: newRevision }
             },
-            ...expectedPosition === end ? {}
-              : expectedPosition === start ? {
-                ConditionExpression: 'attribute_not_exists(#position)',
-                ExpressionAttributeNames: { '#position': 'position' },
+            ...expectedRevision === end ? {}
+              : expectedRevision === start ? {
+                ConditionExpression: 'attribute_not_exists(#revision)',
+                ExpressionAttributeNames: { '#revision': 'revision' },
               } : {
-                ConditionExpression: '#position = :expectedPosition',
-                ExpressionAttributeNames: { '#position': 'position' },
-                ExpressionAttributeValues: { ':expectedPosition': { S: expectedPosition } }
+                ConditionExpression: '#revision = :expectedRevision',
+                ExpressionAttributeNames: { '#revision': 'revision' },
+                ExpressionAttributeValues: { ':expectedRevision': { S: expectedRevision } }
               }
           }
         },
@@ -122,7 +122,7 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
             TableName: es.metadataTable,
             Item: {
               pk: { S: 'slice' },
-              sk: { S: getSlice(es.nextPosition(now)) },
+              sk: { S: getSlice(es.nextRevision(now)) },
             }
           }
         },
@@ -132,7 +132,7 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
 
     return idempotencyKey && wasIdempotent(result.ConsumedCapacity ?? [])
       ? { type: 'unchanged' }
-      : { type: 'appended', count: items.length, position: newPosition }
+      : { type: 'appended', count: items.length, revision: newRevision }
   } catch (e) {
     return mapTransactionError(e)
   }
@@ -165,12 +165,12 @@ export async function* readAll<A>(es: EventStoreClient, { filter, ...r }: ReadIn
       const results = paginate(es.client, range.limit,
         {
           TableName: es.eventsTable,
-          KeyConditionExpression: '#slice = :slice AND #position between :start AND :end',
+          KeyConditionExpression: '#slice = :slice AND #revision between :start AND :end',
           FilterExpression: f.FilterExpression,
           ExpressionAttributeNames: {
             ...f.ExpressionAttributeNames,
             '#slice': 'slice',
-            '#position': 'position'
+            '#revision': 'revision'
           },
           ExpressionAttributeValues: {
             ...f.ExpressionAttributeValues,
@@ -186,13 +186,13 @@ export async function* readAll<A>(es: EventStoreClient, { filter, ...r }: ReadIn
   }
 }
 
-export const readForAppend = async <A>(es: EventStoreClient, key: string, r: ReadInput = {}): Promise<readonly [Position, AsyncIterable<Committed<A>>]> => {
-  const position = await es.client.send(new GetItemCommand({
+export const readForAppend = async <A>(es: EventStoreClient, key: string, r: ReadInput = {}): Promise<readonly [Revision, AsyncIterable<Committed<A>>]> => {
+  const revision = await es.client.send(new GetItemCommand({
     TableName: es.metadataTable,
     Key: { pk: { S: key }, sk: { S: 'state' } }
-  })).then(({ Item }) => Item?.position.S as Position | undefined)
+  })).then(({ Item }) => Item?.revision.S as Revision | undefined)
 
-  return [position ?? start, read<A>(es, key, { end: position, ...r })]
+  return [revision ?? start, read<A>(es, key, { end: revision, ...r })]
 }
 
 /**
@@ -210,16 +210,16 @@ export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r
   const results = paginate(es.client, range.limit,
     {
       TableName: es.eventsTable,
-      IndexName: es.byKeyPositionIndexName,
-      KeyConditionExpression: `#key = :key ${start && end ? 'AND #position between :start AND :end'
-        : start ? 'AND #position >= :start'
-          : end ? 'AND #position <= :end'
+      IndexName: es.byKeyRevisionIndexName,
+      KeyConditionExpression: `#key = :key ${start && end ? 'AND #revision between :start AND :end'
+        : start ? 'AND #revision >= :start'
+          : end ? 'AND #revision <= :end'
             : ''}`,
       FilterExpression: f.FilterExpression,
       ExpressionAttributeNames: {
         ...f.ExpressionAttributeNames,
         '#key': 'key',
-        ...((start || end) && { '#position': 'position' })
+        ...((start || end) && { '#revision': 'revision' })
       },
       ExpressionAttributeValues: {
         ...f.ExpressionAttributeValues,
@@ -235,7 +235,7 @@ export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r
 
 /**
  * Read the most recent event for the provided key. This can be
- * useful to peek at the latest event or position for a key.
+ * useful to peek at the latest event or revision for a key.
  */
 export const readLatest = async <A>(es: EventStoreClient, key: string): Promise<Committed<A> | undefined> => {
   const results = read<A>(es, key, { limit: 1, direction: 'backward' })
@@ -265,7 +265,7 @@ async function* getSlices(es: EventStoreClient, range: InclusiveRange): AsyncIte
 const toEvent = <A>(item: Record<string, AttributeValue>): Committed<A> => ({
   key: item.key.S,
   type: item.type.S,
-  position: item.position.S,
+  revision: item.revision.S,
   correlationId: item.correlationId.S,
   committedAt: item.committedAt.S,
   data: item.data?.M && unmarshall(item.data.M)

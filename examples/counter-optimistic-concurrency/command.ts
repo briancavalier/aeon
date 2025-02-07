@@ -14,9 +14,9 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   // In a real app, we'd parse+validate the incoming command
   const command = JSON.parse(event.body ?? '') as CounterCommand
 
-  // Read the position of the latest event for the counter
+  // Read the revision of the latest event for the counter
   // This is the optimistic concurrency control mechanism
-  const [position, history] = await readForAppend<CounterEvent>(store, `counter/${command.key}`)
+  const [revision, history] = await readForAppend<CounterEvent>(store, `counter/${command.key}`)
 
   // Rebuild the counter's current value
   const value = await reduce(history, (value, event) => update(value, event.data), initialValue)
@@ -33,7 +33,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     store,
     `counter/${command.key}`,
     events.map(data => ({ ...data, data })),
-    { expectedPosition: position }
+    { expectedRevision: revision }
   )
 
   // If the append was successful, return 200

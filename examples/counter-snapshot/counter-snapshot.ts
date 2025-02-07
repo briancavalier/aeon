@@ -1,7 +1,7 @@
-import { Position } from '../../src/eventstore'
+import { Revision } from '../../src/eventstore'
 
 export type CounterSnapshot = Readonly<{
-  revision: Position
+  revision: Revision
   value: number
 }>
 

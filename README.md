@@ -62,24 +62,24 @@ The Pending type represents an event that has been created but not yet committed
 ```ts
 export type Committed<D> = Pending<D> & {
   readonly key: string
-  readonly position: Position
+  readonly revision: Revision
   readonly committedAt: string
 }
 ```
 
-The Committed type extends Pending by adding information about the event’s position, key, slice, and the timestamp when it was committed to the event store.
+The Committed type extends Pending by adding information about the event’s revision, key, slice, and the timestamp when it was committed to the event store.
 
 * `key`: The unique identifier for the event in the event store.
-* `position`: The position of the event within the store.
+* `revision`: The revision of the event within the store.
 * `committedAt`: The timestamp when the event was committed.
 
-### Position
+### Revision
 
 ```ts
-export type Position = string & { readonly type: 'Position' }
+export type Revision = string & { readonly type: 'Revision' }
 ```
 
-The Position type uniquely identifies the position of an event within the event store. It is used to track the order of events and ensure consistency in event handling.
+The Revision type uniquely identifies the revision of an event within the event store. It is used to track the order of events and ensure consistency in event handling.
 
 It's used in various parts of the event store API, such as the RangeInput, Pending, and Committed types, and functions like read, readAll, and append.
 
@@ -87,21 +87,21 @@ It's used in various parts of the event store API, such as the RangeInput, Pendi
 
 ```ts
 export type RangeInput = {
-  readonly start?: Position
+  readonly start?: Revision
   readonly startExclusive?: boolean
-  readonly end?: Position
+  readonly end?: Revision
   readonly endExclusive?: boolean
   readonly limit?: number
   readonly direction?: 'forward' | 'backward'
 }
 ```
 
-The RangeInput type defines the range for reading events in the event store, with optional start and end positions, exclusivity flags, and a limit on the number of events.
+The RangeInput type defines the range for reading events in the event store, with optional start and end revisions, exclusivity flags, and a limit on the number of events.
 
-* `start` (optional): Position to start reading from.
-* `startExclusive` (optional): If true, excludes the start position.
-* `end` (optional): Position to stop reading at.
-* `endExclusive` (optional): If true, excludes the end position.
+* `start` (optional): Revision to start reading from.
+* `startExclusive` (optional): If true, excludes the start revision.
+* `end` (optional): Revision to stop reading at.
+* `endExclusive` (optional): If true, excludes the end revision.
 * `limit` (optional): Maximum number of events to retrieve.
 * `direction` (optional, default 'forward'): If 'forward', reads events in chronological order.  If 'backward', reads events in _reverse_ chronological order.
 
@@ -110,17 +110,17 @@ The RangeInput type defines the range for reading events in the event store, wit
 ### fromConfig
 
 ```ts
-fromConfig(config: EventStoreConfig, client: DynamoDBClient, nextPosition?: (epochMilliseconds?: number) => Position): EventStoreClient
+fromConfig(config: EventStoreConfig, client: DynamoDBClient, nextRevision?: (epochMilliseconds?: number) => Revision): EventStoreClient
 ```
 
-Creates an EventStoreClient instance from a configuration object, a DynamoDB client, and an optional position generator function.
+Creates an EventStoreClient instance from a configuration object, a DynamoDB client, and an optional revision generator function.
 
 ```ts
 const config: EventStoreConfig = {
   name: "myEventStore",
   eventsTable: "EventsTable",
   metadataTable: "MetadataTable",
-  byKeyPositionIndexName: "ByKeyPositionIndex"
+  ByKeyRevisionIndexName: "ByKeyRevisionIndex"
 };
 
 const client = new DynamoDBClient({});
@@ -158,13 +158,13 @@ for await (const event of read(eventStoreClient, "user123", { start: "100", end:
 ### readForAppend
 
 ```ts
-readForAppend<A>(es: EventStoreClient, key: string, r: RangeInput = {}): Promise<readonly [Position | undefined, AsyncIterable<Committed<A>>]>
+readForAppend<A>(es: EventStoreClient, key: string, r: RangeInput = {}): Promise<readonly [Revision | undefined, AsyncIterable<Committed<A>>]>
 ```
 
-Reads events for a specific key, starting from the most recent event’s position. Useful for appending new events with optimistic concurrency.
+Reads events for a specific key, starting from the most recent event’s revision. Useful for appending new events with optimistic concurrency.
 
 ```ts
-const [lastPosition, events] = await readForAppend(eventStoreClient, "user123");
+const [lastRevision, events] = await readForAppend(eventStoreClient, "user123");
 for await (const event of events) {
   console.log(event);
 }
@@ -176,7 +176,7 @@ for await (const event of events) {
 readLatest<A>(es: EventStoreClient, key: string): Promise<Committed<A> | undefined>
 ```
 
-Reads the most recent event for a specific key. Useful to retrieve the latest event or position for a given key.
+Reads the most recent event for a specific key. Useful to retrieve the latest event or revision for a given key.
 
 ```ts
 const latestEvent = await readLatest(eventStoreClient, "user123");
