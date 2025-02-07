@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { append, fromConfigString, readForAppend, reduce } from '../../src/eventstore'
+import { append, fromConfigString, head, read, reduce } from '../../src/eventstore'
 import { CounterCommand, CounterEvent, decide, initialValue, update } from '../counter-basic/domain'
 
 assert(process.env.eventStoreConfig)
@@ -15,10 +15,11 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   // Read the revision of the latest event for the counter
   // This is the optimistic concurrency control mechanism
-  const [revision, history] = await readForAppend<CounterEvent>(store, `counter/${command.key}`)
+  const revision = await head(store, `counter/${command.key}`)
+  const history = read<CounterEvent>(store, `counter/${command.key}`)
 
   // Rebuild the counter's current value
-  const value = await reduce(history, (value, event) => update(value, event.data), initialValue)
+  const value = await reduce(history,(value, event) => update(value, event.data), initialValue)
 
   // Essential domain logic: Decide what new events have occurred
   // based on the current value and incoming command
