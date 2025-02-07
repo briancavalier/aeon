@@ -192,11 +192,6 @@ export const head = async (es: EventStoreClient, key: string): Promise<Revision>
     Key: { pk: { S: key }, sk: { S: 'state' } }
   })).then(({ Item }) => Item?.revision.S as Revision)
 
-export const readForAppend = async <A>(es: EventStoreClient, key: string, r: ReadInput = {}): Promise<readonly [Revision, AsyncIterable<Committed<A>>]> => {
-  const revision = await head(es, key)
-  return [revision ?? start, read<A>(es, key, { end: revision, ...r })]
-}
-
 /**
  * Read a range of events for a specific key from the event store. Range is inclusive,
  * and omitting start will read from the beginning, and ommitting end will read to
