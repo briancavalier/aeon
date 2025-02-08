@@ -1,6 +1,6 @@
 
 import { RemovalPolicy } from 'aws-cdk-lib'
-import { AttributeType, BillingMode, ITable, StreamViewType, Table } from 'aws-cdk-lib/aws-dynamodb'
+import { AttributeType, Billing, ITable, StreamViewType, TableV2 } from 'aws-cdk-lib/aws-dynamodb'
 import { IEventBus } from 'aws-cdk-lib/aws-events'
 import { IGrantable } from 'aws-cdk-lib/aws-iam'
 import { ApplicationLogLevel, IFunction, LoggingFormat, Runtime, StartingPosition, SystemLogLevel } from 'aws-cdk-lib/aws-lambda'
@@ -23,7 +23,7 @@ export interface IEventStore {
 
 export type EventStoreProps = {
   readonly removalPolicy?: RemovalPolicy,
-  readonly billingMode?: BillingMode
+  readonly billing?: Billing,
   readonly byKeyRevisionIndexName?: string
   readonly eventBus: IEventBus
   readonly logLevel?: ApplicationLogLevel
@@ -49,10 +49,11 @@ export class EventStore extends Construct implements IEventStore {
     this.byKeyRevisionIndexName = byKeyRevisionIndexName ?? defaultByKeyRevisionIndexName
     this.logLevel = logLevel
 
-    const eventsTable = new Table(scope, `${id}-table`, {
+    const eventsTable = new TableV2(scope, `${id}-table`, {
+      tableName: id,
       partitionKey: { name: 'slice', type: AttributeType.STRING },
       sortKey: { name: 'revision', type: AttributeType.STRING },
-      stream: StreamViewType.NEW_IMAGE,
+      dynamoStream: StreamViewType.NEW_IMAGE,
       ...tableProps,
     })
 
@@ -62,9 +63,11 @@ export class EventStore extends Construct implements IEventStore {
       sortKey: { name: 'revision', type: AttributeType.STRING }
     })
 
-    const metadataTable = new Table(scope, `${id}-table-metadata`, {
+    const metadataTable = new TableV2(scope, `${id}-table-metadata`, {
+      tableName: `${id}-metadata`,
       partitionKey: { name: 'pk', type: AttributeType.STRING },
       sortKey: { name: 'sk', type: AttributeType.STRING },
+      dynamoStream: StreamViewType.NEW_IMAGE,
       ...tableProps
     })
 
@@ -81,6 +84,7 @@ export class EventStore extends Construct implements IEventStore {
     this.eventBus = eventBus
     
     this.notifier = new NodejsFunction(scope, `${id}-notifier`, {
+      functionName: `${id}-notifier`,
       entry: resolve(__dirname, './notify.ts'),
       runtime: Runtime.NODEJS_22_X,
       loggingFormat: LoggingFormat.JSON,

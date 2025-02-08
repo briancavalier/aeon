@@ -1,5 +1,5 @@
 import { CfnOutput, RemovalPolicy, Stack, StackProps } from 'aws-cdk-lib'
-import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb'
+import { AttributeType, Billing, TableV2 } from 'aws-cdk-lib/aws-dynamodb'
 import { FunctionUrlAuthType } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { Construct } from 'constructs'
@@ -18,13 +18,15 @@ export class CounterCQRSStack extends Stack {
     // -------------------------------------------
     // View
 
-    const counterView = new Table(this, 'counter-view', {
+    const counterView = new TableV2(this, 'counter-view', {
+      tableName: 'counter-cqrs-view',
       partitionKey: { name: 'pk', type: AttributeType.STRING },
-      billingMode: BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.DESTROY
+      billing: Billing.onDemand(),
+      removalPolicy: RemovalPolicy.DESTROY,
     })
 
-    const update = new NodejsFunction(this, `counter-update-handler`, {
+    const update = new NodejsFunction(this, 'counter-cqrs-update-handler', {
+      functionName: 'counter-update-handler',
       ...commonFunctionProps,
       entry: resolve(__dirname, 'update.ts'),
       environment: {
@@ -34,7 +36,7 @@ export class CounterCQRSStack extends Stack {
     })
 
     counterView.grantReadWriteData(update)
-    new EventStoreSubscription(this, 'counter-update-subscription', {
+    new EventStoreSubscription(this, 'counter-cqrs-update-subscription', {
       eventStore: props.eventStore,
       handler: update,
       keys: ['counter/*']
@@ -43,7 +45,8 @@ export class CounterCQRSStack extends Stack {
     // -------------------------------------------
     // Query
 
-    const query = new NodejsFunction(this, `counter-query-handler`, {
+    const query = new NodejsFunction(this, 'counter-cqrs-query-handler', {
+      functionName: 'counter-cqrs-query-handler',
       ...commonFunctionProps,
       entry: resolve(__dirname, 'query.ts'),
       environment: {

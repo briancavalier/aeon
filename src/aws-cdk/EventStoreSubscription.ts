@@ -19,7 +19,8 @@ export class EventStoreSubscription extends Construct {
   }: EventStoreSubscriptionProps) {
     super(scope, id)
 
-    this.rule = new Rule(this, `${id}-rule`, {
+    this.rule = new Rule(this, `${id}-subscription-rule`, {
+      ruleName: `${id}-subscription-rule`,
       eventBus: eventStore.eventBus,
       targets: [new LambdaFunction(handler, {
         event: RuleTargetInput.fromEventPath('$.detail')

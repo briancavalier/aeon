@@ -19,7 +19,8 @@ export class CounterSnapshotStack extends Stack {
     // -------------------------------------------
     // Aggregate
 
-    const command = new NodejsFunction(this, `counter-command-snapshot-handler`, {
+    const command = new NodejsFunction(this, 'counter-snapshot-command-handler', {
+      functionName: 'counter-snapshot-command-handler',
       ...commonFunctionProps,
       entry: resolve(__dirname, 'command.ts'),
       environment: {

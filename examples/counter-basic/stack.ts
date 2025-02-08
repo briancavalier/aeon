@@ -17,7 +17,8 @@ export class CounterStack extends Stack {
     // -------------------------------------------
     // Aggregate
 
-    const command = new NodejsFunction(this, `counter-command-handler`, {
+    const command = new NodejsFunction(this, 'counter-basic-command-handler', {
+      functionName: 'counter-basic-command-handler',
       ...commonFunctionProps,
       entry: resolve(__dirname, 'command.ts'),
       environment: {
@@ -35,7 +36,8 @@ export class CounterStack extends Stack {
     // -------------------------------------------
     // Query
 
-    const query = new NodejsFunction(this, `counter-query-handler`, {
+    const query = new NodejsFunction(this, 'counter-basic-query-handler', {
+      functionName: 'counter-basic-query-handler',
       ...commonFunctionProps,
       entry: resolve(__dirname, 'query.ts'),
       environment: {
