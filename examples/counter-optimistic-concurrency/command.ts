@@ -5,7 +5,6 @@ import { append, fromConfigString, head, read, reduce } from '../../src/eventsto
 import { CounterCommand, CounterEvent, decide, initialValue, update } from '../counter-basic/domain'
 
 assert(process.env.eventStoreConfig)
-assert(process.env.snapshotStoreConfig)
 
 const client = new DynamoDBClient({})
 const store = fromConfigString(process.env.eventStoreConfig, client)
