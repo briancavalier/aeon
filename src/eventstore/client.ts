@@ -12,7 +12,7 @@ export interface EventStoreClient {
   readonly name: string
   readonly eventsTable: string
   readonly metadataTable: string
-  readonly byCategoryRevisionIndexName: string
+  readonly categoryIndex: string
   readonly client: DynamoDBClient
   readonly nextRevision: (epochMilliseconds: number) => Revision
 }
@@ -21,7 +21,7 @@ export type EventStoreConfig = {
   readonly name: string,
   readonly eventsTable: string
   readonly metadataTable: string
-  readonly byCategoryRevisionIndexName: string
+  readonly categoryIndex: string
 }
 
 export const fromConfig = (config: EventStoreConfig, client: DynamoDBClient, nextRevision?: (epochMilliseconds?: number) => Revision): EventStoreClient => ({
@@ -40,7 +40,7 @@ export const parseConfig = (configString: string): EventStoreConfig => {
     assert(typeof config.name === 'string', 'name must be a string')
     assert(typeof config.eventsTable === 'string', 'eventsTable must be a string')
     assert(typeof config.metadataTable === 'string', 'metadataTable must be a string')
-    assert(typeof config.byCategoryRevisionIndexName === 'string', 'byKeyRevisionIndexName must be a string')
+    assert(typeof config.categoryIndex === 'string', 'categoryIndex must be a string')
     return config
   } catch (e) {
     throw e
@@ -199,7 +199,7 @@ export async function* readCategory<A>(es: EventStoreClient, category: string, {
   const results = paginate(es.client, range.limit,
     {
       TableName: es.eventsTable,
-      IndexName: es.byCategoryRevisionIndexName,
+      IndexName: es.categoryIndex,
       KeyConditionExpression: `#category = :category ${start && end ? 'AND #revision between :start AND :end'
         : start ? 'AND #revision >= :start'
           : end ? 'AND #revision <= :end'

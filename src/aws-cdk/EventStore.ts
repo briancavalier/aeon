@@ -24,17 +24,17 @@ export interface IEventStore {
 export type EventStoreProps = {
   readonly removalPolicy?: RemovalPolicy,
   readonly billing?: Billing,
-  readonly byCategoryRevisionIndexName?: string
+  readonly categoryIndex?: string
   readonly eventBus: IEventBus
   readonly logLevel?: ApplicationLogLevel
 }
 
-const defaultByKeyRevisionIndexName = 'by-category-revision'
+const defaultCategoryIndex = 'by-category-revision'
 
 export class EventStore extends Construct implements IEventStore {
   public readonly name: string
   public readonly eventsTable: ITable
-  public readonly byCategoryRevisionIndexName: string
+  public readonly categoryIndex: string
   public readonly metadataTable: ITable
   public readonly eventBus: IEventBus
   public readonly notifier: IFunction
@@ -42,11 +42,11 @@ export class EventStore extends Construct implements IEventStore {
 
   public readonly config: string
 
-  constructor(scope: Construct, id: string, { byCategoryRevisionIndexName: byKeyRevisionIndexName, eventBus, logLevel, ...tableProps }: EventStoreProps) {
+  constructor(scope: Construct, id: string, { categoryIndex, eventBus, logLevel, ...tableProps }: EventStoreProps) {
     super(scope, id)
 
     this.name = id
-    this.byCategoryRevisionIndexName = byKeyRevisionIndexName ?? defaultByKeyRevisionIndexName
+    this.categoryIndex = categoryIndex ?? defaultCategoryIndex
     this.logLevel = logLevel
 
     const eventsTable = new TableV2(scope, `${id}-table`, {
@@ -58,7 +58,7 @@ export class EventStore extends Construct implements IEventStore {
     })
 
     eventsTable.addGlobalSecondaryIndex({
-      indexName: this.byCategoryRevisionIndexName,
+      indexName: this.categoryIndex,
       partitionKey: { name: 'category', type: AttributeType.STRING },
       sortKey: { name: 'revision', type: AttributeType.STRING }
     })
@@ -78,7 +78,7 @@ export class EventStore extends Construct implements IEventStore {
       name: this.name,
       eventsTable: this.eventsTable.tableName,
       metadataTable: this.metadataTable.tableName,
-      byCategoryRevisionIndexName: this.byCategoryRevisionIndexName,
+      categoryIndex: this.categoryIndex,
     })
 
     this.eventBus = eventBus
