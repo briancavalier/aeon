@@ -1,6 +1,5 @@
 export * from './async-iterable'
 export * from './client'
 export * from './event'
-export * from './filter'
 export * from './notification'
 export * from './revision'

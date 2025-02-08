@@ -5,8 +5,6 @@ import { end, ensureInclusive, Revision, RangeInput, start } from './revision'
 import { marshall, NativeAttributeValue, unmarshall } from '@aws-sdk/util-dynamodb'
 import { Pending, Committed } from './event'
 import { paginate } from './dynamodb/paginate'
-import { Filter } from './filter'
-import { toFilterExpression } from './dynamodb/filter-expression'
 
 export interface EventStoreClient {
   readonly name: string
@@ -137,10 +135,6 @@ const mapTransactionError = (e: unknown): AppendResult =>
     ? { type: 'aborted/optimistic-concurrency', error: e }
     : { type: 'aborted/unknown', error: e }
 
-type ReadInput = RangeInput & Readonly<{
-  filter?: Filter<string>
-}>
-
 export const head = async (es: EventStoreClient, key: string): Promise<Revision> =>
   es.client.send(new GetItemCommand({
     TableName: es.metadataTable,
@@ -152,12 +146,10 @@ export const head = async (es: EventStoreClient, key: string): Promise<Revision>
  * and omitting start will read from the beginning, and ommitting end will read to
  * end of the event store.  Omit range entirely to read all events for the specified key.
  */
-export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r }: ReadInput = {}): AsyncIterable<Committed<A>> {
+export async function* read<A>(es: EventStoreClient, key: string, r: RangeInput = {}): AsyncIterable<Committed<A>> {
   const range = ensureInclusive(r)
 
   if (range.start && range.end && range.start > range.end) return
-
-  const f = filter ? toFilterExpression(filter) : {}
 
   const results = paginate(es.client, range.limit,
     {
@@ -166,14 +158,11 @@ export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r
         : start ? 'AND #revision >= :start'
           : end ? 'AND #revision <= :end'
             : ''}`,
-      FilterExpression: f.FilterExpression,
       ExpressionAttributeNames: {
-        ...f.ExpressionAttributeNames,
         '#key': 'key',
         ...((start || end) && { '#revision': 'revision' })
       },
       ExpressionAttributeValues: {
-        ...f.ExpressionAttributeValues,
         ':key': { S: key },
         ...(start && { ':start': { S: start } }),
         ...(end && { ':end': { S: end } })
@@ -189,12 +178,10 @@ export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r
  * and omitting start will read from the beginning, and ommitting end will read to
  * end of the event store.  Omit range entirely to read all events for the specified key.
  */
-export async function* readCategory<A>(es: EventStoreClient, category: string, { filter, ...r }: ReadInput = {}): AsyncIterable<Committed<A>> {
+export async function* readCategory<A>(es: EventStoreClient, category: string, r: RangeInput = {}): AsyncIterable<Committed<A>> {
   const range = ensureInclusive(r)
 
   if (range.start && range.end && range.start > range.end) return
-
-  const f = filter ? toFilterExpression(filter) : {}
 
   const results = paginate(es.client, range.limit,
     {
@@ -204,14 +191,11 @@ export async function* readCategory<A>(es: EventStoreClient, category: string, {
         : start ? 'AND #revision >= :start'
           : end ? 'AND #revision <= :end'
             : ''}`,
-      FilterExpression: f.FilterExpression,
       ExpressionAttributeNames: {
-        ...f.ExpressionAttributeNames,
         '#category': 'category',
         ...((start || end) && { '#revision': 'revision' })
       },
       ExpressionAttributeValues: {
-        ...f.ExpressionAttributeValues,
         ':category': { S: category },
         ...(start && { ':start': { S: start } }),
         ...(end && { ':end': { S: end } })
