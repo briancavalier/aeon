@@ -186,9 +186,15 @@ export async function* readAll<A>(es: EventStoreClient, { filter, ...r }: ReadIn
   }
 }
 
+/**
+ * Get the {@link Revision} of the latest event for a specific key.
+ * If the key has no events, the returned {@link Revision} will be
+ * the start of time.
+ */
 export const head = async (es: EventStoreClient, key: string): Promise<Revision> =>
   es.client.send(new GetItemCommand({
     TableName: es.metadataTable,
+    // Are there any reasons to use ConsistentRead: true?
     Key: { pk: { S: key }, sk: { S: 'state' } }
   })).then(({ Item }) => Item?.revision.S as Revision)
 
