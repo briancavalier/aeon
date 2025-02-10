@@ -13,7 +13,7 @@ export interface EventStoreClient {
   readonly name: string
   readonly eventsTable: string
   readonly metadataTable: string
-  readonly byKeyRevisionIndexName: string
+  readonly revisionIndex: string
   readonly client: DynamoDBClient
   readonly nextRevision: (epochMilliseconds: number) => Revision
 }
@@ -22,7 +22,7 @@ export type EventStoreConfig = {
   readonly name: string,
   readonly eventsTable: string
   readonly metadataTable: string
-  readonly byKeyRevisionIndexName: string
+  readonly revisionIndex: string
 }
 
 export const fromConfig = (config: EventStoreConfig, client: DynamoDBClient, nextRevision?: (epochMilliseconds?: number) => Revision): EventStoreClient => ({
@@ -41,7 +41,7 @@ export const parseConfig = (configString: string): EventStoreConfig => {
     assert(typeof config.name === 'string', 'name must be a string')
     assert(typeof config.eventsTable === 'string', 'eventsTable must be a string')
     assert(typeof config.metadataTable === 'string', 'metadataTable must be a string')
-    assert(typeof config.byKeyRevisionIndexName === 'string', 'byKeyRevisionIndexName must be a string')
+    assert(typeof config.revisionIndex === 'string', 'revisionIndex must be a string')
     return config
   } catch (e) {
     throw new Error(`Invalid configString: ${configString}`, { cause: e })
@@ -103,7 +103,7 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
             TableName: es.metadataTable,
             Item: {
               pk: { S: key },
-              sk: { S: 'state' },
+              sk: { S: 'head' },
               revision: { S: newRevision }
             },
             ...expectedRevision === end ? {}
@@ -122,7 +122,7 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
             TableName: es.metadataTable,
             Item: {
               pk: { S: 'slice' },
-              sk: { S: getSlice(es.nextRevision(now)) },
+              sk: { S: items[0].Put.Item.slice.S },
             }
           }
         },
@@ -165,6 +165,7 @@ export async function* readAll<A>(es: EventStoreClient, { filter, ...r }: ReadIn
       const results = paginate(es.client, range.limit,
         {
           TableName: es.eventsTable,
+          IndexName: es.revisionIndex,
           KeyConditionExpression: '#slice = :slice AND #revision between :start AND :end',
           FilterExpression: f.FilterExpression,
           ExpressionAttributeNames: {
@@ -195,7 +196,7 @@ export const head = async (es: EventStoreClient, key: string): Promise<Revision>
   es.client.send(new GetItemCommand({
     TableName: es.metadataTable,
     // Are there any reasons to use ConsistentRead: true?
-    Key: { pk: { S: key }, sk: { S: 'state' } }
+    Key: { pk: { S: key }, sk: { S: 'head' } }
   })).then(({ Item }) => Item?.revision.S as Revision)
 
 /**
@@ -213,7 +214,6 @@ export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r
   const results = paginate(es.client, range.limit,
     {
       TableName: es.eventsTable,
-      IndexName: es.byKeyRevisionIndexName,
       KeyConditionExpression: `#key = :key ${start && end ? 'AND #revision between :start AND :end'
         : start ? 'AND #revision >= :start'
           : end ? 'AND #revision <= :end'

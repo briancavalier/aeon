@@ -7,7 +7,8 @@ import { IEventStore } from './EventStore'
 export interface EventStoreSubscriptionProps {
   readonly eventStore: IEventStore
   readonly handler: IFunction
-  readonly keys?: readonly string[]
+  readonly key?: readonly string[]
+  readonly type?: readonly string[]
 }
 
 export class EventStoreSubscription extends Construct {
@@ -15,9 +16,15 @@ export class EventStoreSubscription extends Construct {
   constructor(scope: Construct, id: string, {
     eventStore,
     handler,
-    keys
+    key,
+    type
   }: EventStoreSubscriptionProps) {
     super(scope, id)
+
+    let events: Record<string, unknown> | undefined = undefined
+
+    if(key) events = { key: key.map(toFilterPattern) }
+    if(type) events = { ...events, type: type.map(toFilterPattern) }
 
     this.rule = new Rule(this, `${id}-subscription-rule`, {
       ruleName: `${id}-subscription-rule`,
@@ -27,12 +34,12 @@ export class EventStoreSubscription extends Construct {
       })],
       eventPattern: {
         source: [eventStore.name],
-        detail: keys ? {
-          keys: keys.map(key => key.match(/\*/g) ? ({ wildcard: key }) : key)
-        } : undefined
+        detail: events ? { events } : undefined
       }
     })
 
     eventStore.grantReadEvents(handler)
   }
 }
+
+const toFilterPattern = (s: string) => s.match(/\*/g) ? ({ wildcard: s }) : s

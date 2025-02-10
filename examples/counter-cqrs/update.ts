@@ -14,10 +14,10 @@ const docClient = DynamoDBDocumentClient.from(client)
 // Build an optimized view of counters incrementally
 // from events. This allows queries to be answered simply
 // by getting the answer directly from the view table.
-export const handler = async ({ eventStoreConfig, end, keys }: Notification) => {
+export const handler = async ({ eventStoreConfig, revision }: Notification) => {
   const store = fromConfig(eventStoreConfig, client)
 
-  console.debug({ eventStoreConfig, end, keys })
+  console.debug({ eventStoreConfig, revision })
 
   // Maintain latest seen event revision, so we only
   // need to read events between that and end.
@@ -27,11 +27,11 @@ export const handler = async ({ eventStoreConfig, end, keys }: Notification) => 
   const events = readAll<CounterEvent>(store, {
     start,
     startExclusive: true,
-    end,
+    end: revision,
     filter: prefix('key', 'counter/')
   })
 
-  console.debug({ eventStoreConfig, start, end })
+  console.debug({ eventStoreConfig, start, end: revision })
 
   // Update the view table incrementally
   for await (const { data, ...meta } of events) {
@@ -41,8 +41,8 @@ export const handler = async ({ eventStoreConfig, end, keys }: Notification) => 
 
   // Update the last seen revision, so we don't need
   // to read the same events again.
-  await updateRevision(docClient, table, end)
-    .catch(logConditionFailed(`Ignoring old revision update: ${end}`))
+  await updateRevision(docClient, table, revision)
+    .catch(logConditionFailed(`Ignoring old revision update: ${revision}`))
 }
 
 export const updateCounter = (ddb: DynamoDBDocumentClient, table: string, { key, type }: CounterEvent, revision: Revision) =>

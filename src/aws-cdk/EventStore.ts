@@ -24,17 +24,17 @@ export interface IEventStore {
 export type EventStoreProps = {
   readonly removalPolicy?: RemovalPolicy,
   readonly billing?: Billing,
-  readonly byKeyRevisionIndexName?: string
+  readonly revisionIndex?: string
   readonly eventBus: IEventBus
   readonly logLevel?: ApplicationLogLevel
 }
 
-const defaultByKeyRevisionIndexName = 'by-key-revision'
+const defaultRevisionIndex = 'by-revision'
 
 export class EventStore extends Construct implements IEventStore {
   public readonly name: string
   public readonly eventsTable: ITable
-  public readonly byKeyRevisionIndexName: string
+  public readonly revisionIndex: string
   public readonly metadataTable: ITable
   public readonly eventBus: IEventBus
   public readonly notifier: IFunction
@@ -42,24 +42,24 @@ export class EventStore extends Construct implements IEventStore {
 
   public readonly config: string
 
-  constructor(scope: Construct, id: string, { byKeyRevisionIndexName, eventBus, logLevel, ...tableProps }: EventStoreProps) {
+  constructor(scope: Construct, id: string, { revisionIndex, eventBus, logLevel, ...tableProps }: EventStoreProps) {
     super(scope, id)
 
     this.name = id
-    this.byKeyRevisionIndexName = byKeyRevisionIndexName ?? defaultByKeyRevisionIndexName
+    this.revisionIndex = revisionIndex ?? defaultRevisionIndex
     this.logLevel = logLevel
 
     const eventsTable = new TableV2(scope, `${id}-table`, {
       tableName: id,
-      partitionKey: { name: 'slice', type: AttributeType.STRING },
+      partitionKey: { name: 'key', type: AttributeType.STRING },
       sortKey: { name: 'revision', type: AttributeType.STRING },
       dynamoStream: StreamViewType.NEW_IMAGE,
       ...tableProps,
     })
 
     eventsTable.addGlobalSecondaryIndex({
-      indexName: this.byKeyRevisionIndexName,
-      partitionKey: { name: 'key', type: AttributeType.STRING },
+      indexName: this.revisionIndex,
+      partitionKey: { name: 'slice', type: AttributeType.STRING },
       sortKey: { name: 'revision', type: AttributeType.STRING }
     })
 
@@ -78,7 +78,7 @@ export class EventStore extends Construct implements IEventStore {
       name: this.name,
       eventsTable: this.eventsTable.tableName,
       metadataTable: this.metadataTable.tableName,
-      byKeyRevisionIndexName: this.byKeyRevisionIndexName,
+      revisionIndex: this.revisionIndex,
     })
 
     this.eventBus = eventBus

@@ -7,9 +7,9 @@ export async function* paginate(client: DynamoDBClient, limit: number, q: QueryC
   do {
     const { Items, LastEvaluatedKey }: QueryCommandOutput =
       await client.send(new QueryCommand({ ...q, ExclusiveStartKey: k }))
-    
+
     if (!Items) return
-    else if(Items.length >= limit) return yield* Items.slice(0, limit)
+    else if (Items.length >= limit) return yield* Items.slice(0, limit)
 
     yield* Items
     limit -= Items.length

@@ -33,8 +33,8 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const range = snapshotRange(snapshot?.data)
   console.debug({ snapshot, range })
 
-  const latest = await head(store, `counter/${command.key}`)
-  const history = read<CounterEvent>(store, `counter/${command.key}`, { ...range, end: latest })
+  const revision = await head(store, `counter/${command.key}`)
+  const history = read<CounterEvent>(store, `counter/${command.key}`, { ...range, end: revision })
 
   // Rebuild the counter's current value
   // If we have a snapshot, start from its value. Otherwise, start
@@ -59,7 +59,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     store,
     `counter/${command.key}`,
     events.map(data => ({ ...data, data })),
-    { expectedRevision: latest }
+    { expectedRevision: revision }
   )
 
   // If we wrote some new events, and it's time to take

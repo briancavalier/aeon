@@ -39,7 +39,7 @@ export class CounterCQRSStack extends Stack {
     new EventStoreSubscription(this, 'counter-cqrs-update-subscription', {
       eventStore: props.eventStore,
       handler: update,
-      keys: ['counter/*']
+      key: ['counter/*']
     })
 
     // -------------------------------------------
