@@ -1,11 +1,11 @@
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
-import { Revision } from '../../src/eventstore'
+import { Revision, start } from '../../src/eventstore'
 
 export const getRevision = async (ddb: DynamoDBDocumentClient, table: string): Promise<Revision> =>
   ddb.send(new GetCommand({
     TableName: table,
     Key: { pk: 'revision' }
-  })).then(({ Item }) => Item?.revision)
+  })).then(({ Item }) => Item?.revision ?? start)
 
 export const updateRevision = (ddb: DynamoDBDocumentClient, table: string, revision: Revision): Promise<unknown> =>
   ddb.send(new PutCommand({

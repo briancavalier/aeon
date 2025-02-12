@@ -4,7 +4,7 @@ import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { Construct } from 'constructs'
 import { resolve } from 'node:path'
 import { IEventStore } from '../../src/aws-cdk'
-import { commonFunctionEnv, commonFunctionProps } from '../aws-defaults'
+import { commonFunctionEnv, commonFunctionProps } from '../lib/cdk-defaults'
 
 export interface CounterOptimisticConcurrencyStackProps extends StackProps {
   eventStore: IEventStore

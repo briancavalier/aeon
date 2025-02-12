@@ -2,12 +2,12 @@ import { DynamoDBClient, ReturnValue } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import assert from 'node:assert'
 import { fromConfig, Notification, Revision, prefix, readAll } from '../../src/eventstore'
-import { CounterEvent } from '../counter-basic/domain'
-import { getRevision, updateRevision } from './revision'
+import { CounterEvent } from '../domain'
+import { getRevision, updateRevision } from '../lib/revision'
 
 assert(process.env.viewTable)
+const { viewTable } = process.env
 
-const table = process.env.viewTable
 const client = new DynamoDBClient({})
 const docClient = DynamoDBDocumentClient.from(client)
 
@@ -21,7 +21,7 @@ export const handler = async ({ eventStoreConfig, revision }: Notification) => {
 
   // Maintain latest seen event revision, so we only
   // need to read events between that and end.
-  const start = await getRevision(client, table)
+  const start = await getRevision(client, viewTable)
 
   // Read counter events between last seen and end
   const events = readAll<CounterEvent>(store, {
@@ -34,18 +34,18 @@ export const handler = async ({ eventStoreConfig, revision }: Notification) => {
   console.debug({ eventStoreConfig, start, end: revision })
 
   // Update the view table incrementally
-  for await (const { data, ...meta } of events) {
-    console.info(meta)
-    await updateCounter(docClient, table, data, meta.revision)
+  for await (const { key, data, revision } of events) {
+    console.info({ key, data, revision })
+    await updateCounter(docClient, viewTable, key, data, revision)
   }
 
   // Update the last seen revision, so we don't need
   // to read the same events again.
-  await updateRevision(docClient, table, revision)
+  await updateRevision(docClient, viewTable, revision)
     .catch(logConditionFailed(`Ignoring old revision update: ${revision}`))
 }
 
-export const updateCounter = (ddb: DynamoDBDocumentClient, table: string, { key, type }: CounterEvent, revision: Revision) =>
+export const updateCounter = (ddb: DynamoDBDocumentClient, table: string, key: string, { type }: CounterEvent, revision: Revision) =>
   ddb.send(new UpdateCommand({
     TableName: table,
     Key: { pk: key },

@@ -2,7 +2,8 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
 import { append, fromConfigString, read, reduce, first, head } from '../../src/eventstore'
-import { CounterCommand, CounterEvent, decide, initialValue, update } from '../counter-basic/domain'
+import { CounterEvent } from '../domain'
+import { CounterCommand, decide, initialValue, update } from "../aggregate"
 import { CounterSnapshot, snapshotRange } from './counter-snapshot'
 
 assert(process.env.eventStoreConfig)
@@ -20,10 +21,10 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   // Read the latest snapshot from the snapshot store
   // If there are no snapshots yet, this will return undefined
-  const snapshotRevision = await head(store, `counter-snapshot/${command.key}`)
+  const snapshotRevision = await head(store, `counter-snapshot/${command.name}`)
   const snapshot = await first(read<CounterSnapshot>(
     store,
-    `counter-snapshot/${command.key}`,
+    `counter-snapshot/${command.name}`,
     { start: snapshotRevision, end: snapshotRevision, limit: 1 }
   ))
 
@@ -33,8 +34,8 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const range = snapshotRange(snapshot?.data)
   console.debug({ snapshot, range })
 
-  const revision = await head(store, `counter/${command.key}`)
-  const history = read<CounterEvent>(store, `counter/${command.key}`, { ...range, end: revision })
+  const revision = await head(store, `counter/${command.name}`)
+  const history = read<CounterEvent>(store, `counter/${command.name}`, { ...range, end: revision })
 
   // Rebuild the counter's current value
   // If we have a snapshot, start from its value. Otherwise, start
@@ -57,7 +58,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   // This returns the revision of the last event appended
   const result = await append(
     store,
-    `counter/${command.key}`,
+    `counter/${command.name}`,
     events.map(data => ({ ...data, data })),
     { expectedRevision: revision }
   )
@@ -69,7 +70,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     const newValue = events.reduce(update, value)
     console.debug({ msg: 'Adding new snapshot', newValue, revision: result.revision })
 
-    await append(store, `counter-snapshot/${command.key}`, [{
+    await append(store, `counter-snapshot/${command.name}`, [{
       type: 'snapshot-created',
       data: { revision: result.revision, value: newValue }
     }], { expectedRevision: snapshotRevision })

@@ -1,6 +1,6 @@
 
 import { RemovalPolicy } from 'aws-cdk-lib'
-import { AttributeType, Billing, ITable, StreamViewType, TableV2 } from 'aws-cdk-lib/aws-dynamodb'
+import { AttributeType, Billing, ITable, ITableV2, StreamViewType, TableV2 } from 'aws-cdk-lib/aws-dynamodb'
 import { IEventBus } from 'aws-cdk-lib/aws-events'
 import { IGrantable } from 'aws-cdk-lib/aws-iam'
 import { ApplicationLogLevel, IFunction, LoggingFormat, Runtime, StartingPosition, SystemLogLevel } from 'aws-cdk-lib/aws-lambda'
@@ -33,9 +33,9 @@ const defaultRevisionIndex = 'by-revision'
 
 export class EventStore extends Construct implements IEventStore {
   public readonly name: string
-  public readonly eventsTable: ITable
+  public readonly eventsTable: ITableV2
   public readonly revisionIndex: string
-  public readonly metadataTable: ITable
+  public readonly metadataTable: ITableV2
   public readonly eventBus: IEventBus
   public readonly notifier: IFunction
   public readonly logLevel?: ApplicationLogLevel
@@ -82,7 +82,7 @@ export class EventStore extends Construct implements IEventStore {
     })
 
     this.eventBus = eventBus
-    
+
     this.notifier = new NodejsFunction(scope, `${id}-notifier`, {
       functionName: `${id}-notifier`,
       entry: resolve(__dirname, './notify.ts'),

@@ -2,12 +2,16 @@ import { RemovalPolicy, Stack } from "aws-cdk-lib"
 import { EventBus } from "aws-cdk-lib/aws-events"
 import { Construct } from "constructs"
 import { EventStore, IEventStore } from "../src/aws-cdk"
-import { Billing } from "aws-cdk-lib/aws-dynamodb"
+import { AttributeType, Billing, ITable, TableV2 } from "aws-cdk-lib/aws-dynamodb"
 import { ApplicationLogLevel } from "aws-cdk-lib/aws-lambda"
 
+/**
+ * Stack for all the counter examples.  Creates the shared
+ * EventStore and an EventBus for notifying subscribers.
+ */
 export class CounterEventStoreStack extends Stack {
   public readonly eventStore: IEventStore
-  
+
   constructor(scope: Construct, id: string) {
     super(scope, id)
 
