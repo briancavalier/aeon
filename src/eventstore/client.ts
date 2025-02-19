@@ -84,7 +84,7 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
           correlationId: e.correlationId ? { S: e.correlationId } : { NULL: true },
           revision: { S: revision },
           type: { S: e.type },
-          data: { M: marshall(e.data) }
+          data: { M: marshall(e.data, { removeUndefinedValues: true }) }
         },
         ConditionExpression: 'attribute_not_exists(#key)',
         ExpressionAttributeNames: { '#key': 'key' }
@@ -230,7 +230,7 @@ export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r
         ...(start && { ':start': { S: start } }),
         ...(end && { ':end': { S: end } })
       },
-      ScanIndexForward: r.direction === 'forward'
+      ScanIndexForward: range.direction === 'forward'
     })
 
   for await (const item of results) yield toEvent<A>(item)
