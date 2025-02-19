@@ -16,6 +16,7 @@ Aeon isn’t production-ready—it’s a playground for learning and experimenti
 
 1. 🤨 [counter-basic](examples/counter-basic/) - A basic event sourced counter with a command API to increment & decrement counters, and a query API that answers queries inefficiently by replaying a counter's entire event history.
 1. 😊 [counter-cqrs](examples/counter-cqrs/) - builds on counter-basic by adding a separate, optimized read model and a new query API that answers queries using the read model.
+1. 😇 [counter-cqrs-lazy](examples/counter-cqrs-lazy/) - similar to counter-cqrs, but uses a lazy read-through (pull) strategy to update its read model instead of a subscription (push) strategy. 
 1. 😁 [counter-optimistic-concurrency](examples/counter-optimistic-concurrency/) - builds on counter-cqrs by adding a new command handler that uses optimistic concurrency control to ensure counter events are only appended when their history hasn't changed.
 1. 🥳 [counter-snapshot](examples/counter-snapshot/) - builds on counter-optimistic-concurrency by adding a new command handler that uses snapshots to update a counter without needing to read 
 its entire history.
