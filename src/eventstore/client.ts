@@ -7,7 +7,7 @@ import { marshall, NativeAttributeValue, unmarshall } from '@aws-sdk/util-dynamo
 import { Pending, Committed } from './event'
 import { paginate } from './dynamodb/paginate'
 import { Filter } from './filter'
-import { toFilterExpression } from './dynamodb/filter-expression'
+import { DynamoDBExpression, toFilterExpression } from './dynamodb/filter-expression'
 
 export interface EventStoreClient {
   readonly name: string
@@ -138,11 +138,6 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
   }
 }
 
-const mapTransactionError = (e: unknown): AppendResult =>
-  (e instanceof Error && e.name === 'TransactionCanceledException')
-    ? { type: 'aborted/optimistic-concurrency', error: e }
-    : { type: 'aborted/unknown', error: e }
-
 type ReadInput = RangeInput & Readonly<{
   filter?: Filter<string>
 }>
@@ -162,25 +157,7 @@ export async function* readAll<A>(es: EventStoreClient, { filter, ...r }: ReadIn
 
   for await (const page of slices) {
     for (const slice of page) {
-      const results = paginate(es.client, range.limit,
-        {
-          TableName: es.eventsTable,
-          IndexName: es.revisionIndex,
-          KeyConditionExpression: '#slice = :slice AND #revision between :start AND :end',
-          FilterExpression: f.FilterExpression,
-          ExpressionAttributeNames: {
-            ...f.ExpressionAttributeNames,
-            '#slice': 'slice',
-            '#revision': 'revision'
-          },
-          ExpressionAttributeValues: {
-            ...f.ExpressionAttributeValues,
-            ':slice': { S: slice },
-            ':start': { S: range.start },
-            ':end': { S: range.end }
-          },
-          ScanIndexForward: range.direction === 'forward'
-        })
+      const results = paginate(es.client, range.limit, buildQuery(es.eventsTable, 'slice', slice, range, f, es.revisionIndex))
 
       for await (const item of results) yield toEvent<A>(item)
     }
@@ -197,7 +174,7 @@ export const head = async (es: EventStoreClient, key: string): Promise<Revision>
     TableName: es.metadataTable,
     // Are there any reasons to use ConsistentRead: true?
     Key: { pk: { S: key }, sk: { S: 'head' } }
-  })).then(({ Item }) => Item?.revision.S as Revision)
+  })).then(({ Item }) => Item?.revision.S as Revision ?? start)
 
 /**
  * Read a range of events for a specific key from the event store. Range is inclusive,
@@ -211,30 +188,30 @@ export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r
 
   const f = filter ? toFilterExpression(filter) : {}
 
-  const results = paginate(es.client, range.limit,
-    {
-      TableName: es.eventsTable,
-      KeyConditionExpression: `#key = :key ${start && end ? 'AND #revision between :start AND :end'
-        : start ? 'AND #revision >= :start'
-          : end ? 'AND #revision <= :end'
-            : ''}`,
-      FilterExpression: f.FilterExpression,
-      ExpressionAttributeNames: {
-        ...f.ExpressionAttributeNames,
-        '#key': 'key',
-        ...((start || end) && { '#revision': 'revision' })
-      },
-      ExpressionAttributeValues: {
-        ...f.ExpressionAttributeValues,
-        ':key': { S: key },
-        ...(start && { ':start': { S: start } }),
-        ...(end && { ':end': { S: end } })
-      },
-      ScanIndexForward: range.direction === 'forward'
-    })
+  const results = paginate(es.client, range.limit, buildQuery(es.eventsTable, 'key', key, range, f))
 
   for await (const item of results) yield toEvent<A>(item)
 }
+
+const buildQuery = (tableName: string, keyName: string, keyValue: string, range: InclusiveRange, f: DynamoDBExpression = {}, indexName?: string) => ({
+  TableName: tableName,
+  IndexName: indexName,
+  KeyConditionExpression: '#key = :key AND #revision between :start AND :end',
+  FilterExpression: f.FilterExpression,
+  ExpressionAttributeNames: {
+    ...f.ExpressionAttributeNames,
+    '#key': keyName,
+    '#revision': 'revision'
+  },
+  ExpressionAttributeValues: {
+    ...f.ExpressionAttributeValues,
+    ':key': { S: keyValue },
+    ':start': { S: range.start },
+    ':end': { S: range.end }
+  },
+  Limit: range.limit,
+  ScanIndexForward: range.direction === 'forward'
+})
 
 async function* getSlices(es: EventStoreClient, range: InclusiveRange): AsyncIterable<readonly Slice[]> {
   const pages = paginateQuery(es, {
@@ -269,3 +246,8 @@ const wasIdempotent = (consumedCapacity: readonly { readonly CapacityUnits?: num
   0 === consumedCapacity.reduce(
     (acc, { CapacityUnits }) => acc + (CapacityUnits ?? 0), 0
   )
+
+const mapTransactionError = (e: unknown): AppendResult =>
+  (e instanceof Error && e.name === 'TransactionCanceledException')
+    ? { type: 'aborted/optimistic-concurrency', error: e }
+    : { type: 'aborted/unknown', error: e }

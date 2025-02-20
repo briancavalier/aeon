@@ -10,7 +10,7 @@ Some things you can explore:
 * 🗄️ **Built on DynamoDB** – Understand the trade-offs of using a NoSQL database for event sourcing.
 * 🚀 **Easy deployment** – Use the AWS CDK construct to quickly set up an event store in your own AWS account.
 
-Aeon isn’t production-ready—it’s a playground for learning and experimenting with event-driven patterns. If you’re exploring event sourcing and want to see how these ideas work in practice, give it a try!
+Aeon isn’t production-ready. It’s a playground for learning and experimenting with event-driven patterns. If you’re exploring event sourcing and want to see how these ideas work in practice, give it a try!
 
 ## Examples
 
@@ -40,163 +40,14 @@ To remove a deployed example from your AWS account
 3. `cd examples/<example to deploy>`
 4. `npx cdk destroy --all`
 
-## Types & API
-
-### Pending
-
-```ts
-export type Pending<D> = {
-  readonly type: string
-  readonly correlationId?: string
-  readonly data: D
-}
-```
-
-The Pending type represents an event that has been created but not yet committed to the event store.
-
-* `type`: The type of the event.
-* `correlationId` (optional): A unique identifier for correlating events.
-* `data`: The event data.
-
-### Committed
-
-```ts
-export type Committed<D> = Pending<D> & {
-  readonly key: string
-  readonly revision: Revision
-  readonly committedAt: string
-}
-```
-
-The Committed type extends Pending by adding information about the event’s revision, key, slice, and the timestamp when it was committed to the event store.
-
-* `key`: The unique identifier for the event in the event store.
-* `revision`: The revision of the event within the store.
-* `committedAt`: The timestamp when the event was committed.
-
-### Revision
-
-```ts
-export type Revision = string & { readonly type: 'Revision' }
-```
-
-The Revision type uniquely identifies the revision of an event within the event store. It is used to track the order of events and ensure consistency in event handling.
-
-It's used in various parts of the event store API, such as the RangeInput, Pending, and Committed types, and functions like read, readAll, and append.
-
-### RangeInput
-
-```ts
-export type RangeInput = {
-  readonly start?: Revision
-  readonly startExclusive?: boolean
-  readonly end?: Revision
-  readonly endExclusive?: boolean
-  readonly limit?: number
-  readonly direction?: 'forward' | 'backward'
-}
-```
-
-The RangeInput type defines the range for reading events in the event store, with optional start and end revisions, exclusivity flags, and a limit on the number of events.
-
-* `start` (optional): Revision to start reading from.
-* `startExclusive` (optional): If true, excludes the start revision.
-* `end` (optional): Revision to stop reading at.
-* `endExclusive` (optional): If true, excludes the end revision.
-* `limit` (optional): Maximum number of events to retrieve.
-* `direction` (optional, default 'forward'): If 'forward', reads events in chronological order.  If 'backward', reads events in _reverse_ chronological order.
-
 ## API
 
-### fromConfig
+**The best way to learn the API is to [look through the examples](#examples).**
 
-```ts
-fromConfig(config: EventStoreConfig, client: DynamoDBClient, nextRevision?: (epochMilliseconds?: number) => Revision): EventStoreClient
-```
+There are really two APIs:
 
-Creates an EventStoreClient instance from a configuration object, a DynamoDB client, and an optional revision generator function.
-
-```ts
-const config: EventStoreConfig = {
-  name: "myEventStore",
-  eventsTable: "EventsTable",
-  metadataTable: "MetadataTable",
-  ByKeyRevisionIndexName: "ByKeyRevisionIndex"
-};
-
-const client = new DynamoDBClient({});
-const eventStoreClient = fromConfig(config, client);
-```
-
-### append
-
-```ts
-append<D extends NativeAttributeValue>(es: EventStoreClient, key: string, events: readonly Pending<D>[], options?: AppendKeyOptions): Promise<AppendResult>
-```
-
-Appends events to the event store for a specific key. Optionally supports idempotency and optimistic concurrency.
-
-```ts
-const result = await append(eventStoreClient, "user123", [{ type: "Created", data: { userId: "user123" } }]);
-console.log(result);
-```
-
-
-### read
-
-```ts
-read<A>(es: EventStoreClient, key: string, r: RangeInput = {}): AsyncIterable<Committed<A>>
-```
-
-Reads a range of events for a specific key. The range is inclusive and can be specified using a RangeInput. Omitting the range reads all events for the key.
-
-```ts
-for await (const event of read(eventStoreClient, "user123", { start: "100", end: "200" })) {
-  console.log(event);
-}
-```
-
-### readForAppend
-
-```ts
-readForAppend<A>(es: EventStoreClient, key: string, r: RangeInput = {}): Promise<readonly [Revision | undefined, AsyncIterable<Committed<A>>]>
-```
-
-Reads events for a specific key, starting from the most recent event’s revision. Useful for appending new events with optimistic concurrency.
-
-```ts
-const [lastRevision, events] = await readForAppend(eventStoreClient, "user123");
-for await (const event of events) {
-  console.log(event);
-}
-```
-
-### readLatest
-
-```ts
-readLatest<A>(es: EventStoreClient, key: string): Promise<Committed<A> | undefined>
-```
-
-Reads the most recent event for a specific key. Useful to retrieve the latest event or revision for a given key.
-
-```ts
-const latestEvent = await readLatest(eventStoreClient, "user123");
-console.log(latestEvent);
-```
-
-### readAll
-
-```ts
-readAll<A>(es: EventStoreClient, r: RangeInput = {}): AsyncIterable<Committed<A>>
-```
-
-Reads a range of all events from the event store. The range is inclusive and can be specified using a RangeInput. If omitted, it will read all events.
-
-```ts
-for await (const event of readAll(eventStoreClient)) {
-  console.log(event);
-}
-```
+1. Software API (TypeScript aws-_sdk_) - used to implement your application, i.e. reading and appending events in the course of implementing your business logic, read models, etc.
+2. Infrastructure API (TypeScript aws-_cdk_) - used to deploy your infrastructure and applicaton, i.e. creating and deploying a DynamoDB event store in AWS, etc.
 
 ## Resources & Inspirations
 
