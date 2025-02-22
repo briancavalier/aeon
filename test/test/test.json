@@ -1,0 +1,5 @@
+{
+  "integrationTest": {
+    "eventStoreConfig": "{\"name\":\"integrationTest-eventstore\",\"eventsTable\":\"integrationTest-eventstore\",\"metadataTable\":\"integrationTest-eventstore-metadata\",\"revisionIndex\":\"by-revision\"}"
+  }
+}

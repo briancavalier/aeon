@@ -26,7 +26,10 @@
     "build:esm": "tsc --project ./tsconfig.build-esm.json --incremental --tsBuildInfoFile dist/esm/.tsbuildinfo",
     "build:cjs": "tsc --project ./tsconfig.build-cjs.json --incremental --tsBuildInfoFile dist/cjs/.tsbuildinfo",
     "test": "npx tsx --test src/**/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:integration": "npx tsx --test test/**/*.test.ts",
+    "pretest:integration": "cd test && npx cdk deploy --outputs-file=test.json --require-approval=never",
+    "posttest:integration": "cd test && npx cdk destroy --force"
   },
   "devDependencies": {
     "@aws-sdk/client-dynamodb": "^3.751.0",
@@ -35,7 +38,7 @@
     "@types/aws-lambda": "^8.10.147",
     "@types/node": "^22.13.4",
     "aws-cdk": "^2.1000.2",
-    "aws-cdk-lib": "^2.179.0",
+    "aws-cdk-lib": "^2.180.0",
     "aws-lambda": "^1.0.7",
     "constructs": "^10.4.2",
     "typescript": "^5.7.3"
