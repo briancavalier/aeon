@@ -4,25 +4,27 @@ export type Event =
   | FlavourWentOutOfStock
   | FlavourWasNotInStock
 
+export type Truck = `truck/${number}`
+
 export type Flavour = 'Vanilla' | 'Chocolate' | 'Strawberry'
 
 export interface FlavourRestocked {
   readonly type: 'FlavourRestocked'
-  readonly Flavour: Flavour
+  readonly flavour: Flavour
   readonly quantity: number
 }
 
 export interface FlavourSold {
   readonly type: 'FlavourSold'
-  readonly Flavour: Flavour
+  readonly flavour: Flavour
 }
 
 export interface FlavourWentOutOfStock {
   readonly type: 'FlavourWentOutOfStock'
-  readonly Flavour: Flavour
+  readonly flavour: Flavour
 }
 
 export interface FlavourWasNotInStock {
-  readonly type: 'FlavourNotInStock'
-  readonly Flavour: Flavour
+  readonly type: 'FlavourWasNotInStock'
+  readonly flavour: Flavour
 }
