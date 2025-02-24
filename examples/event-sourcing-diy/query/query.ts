@@ -1,28 +1,41 @@
-import { Event, Flavour } from "./domain"
+import { Revision } from "../../../src/eventstore"
+import { Event, Flavour, Truck, isFlavour, isTruck } from "../domain"
 
-export interface FlavorInStockOfTruck<Truck, Flavour> {
-  readonly type: 'FlavorInStockOfTruck'
+export interface Result<A> {
+  readonly type: 'Result'
+  readonly value: A
+}
+
+export interface RetryAfter {
+  readonly type: 'RetryAfter'
+  readonly requested: Revision,
+  readonly latest: Revision,
+  readonly seconds: number
+}
+
+export type QueryResult<A, E> =
+  | Result<A>
+  | RetryAfter
+
+export type Query = FlavourInStockOfTruck | FlavourSoldOfTruck
+
+export interface FlavourInStockOfTruck {
+  readonly type: 'FlavourInStockOfTruck'
   readonly truck: Truck
   readonly flavour: Flavour
 }
 
-export interface FlavourSoldOfTruck<Truck, Flavour> {
+export interface FlavourSoldOfTruck {
   readonly type: 'FlavourSoldOfTruck'
   readonly truck: Truck
   readonly flavour: Flavour
 }
 
-export type QueryResult<A, E> = Handled<A> | QueryError<E>
-
-export interface Handled<A> {
-  readonly type: 'Handled'
-  readonly result: A
-}
-
-export interface QueryError<E> {
-  readonly type: 'QueryError'
-  readonly error: E
-}
+export const isQuery = (x: unknown): x is Query =>
+  !!x && typeof x === 'object' &&
+  ((x as Query).type === 'FlavourInStockOfTruck' || (x as Query).type === 'FlavourSoldOfTruck') &&
+  typeof (x as Query).truck === 'string' && isTruck((x as Query).truck) &&
+  typeof (x as Query).flavour === 'string' && isFlavour((x as Query).flavour)
 
 export type FlavourCounts
   = Readonly<Record<Flavour, number>>

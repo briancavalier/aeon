@@ -1,15 +1,17 @@
-import { Event, Flavour } from "./domain"
+import { Event, Flavour, Truck } from "../domain"
 
 export type Command = RestockFlavour | SellFlavour
 
 export interface RestockFlavour {
   readonly type: 'RestockFlavour'
+  readonly truck: Truck
   readonly flavour: Flavour
   readonly quantity: number
 }
 
 export interface SellFlavour {
   readonly type: 'SellFlavour'
+  readonly truck: Truck
   readonly flavour: Flavour
 }
 
