@@ -22,7 +22,7 @@ export class CounterOptimisticConcurrencyStack extends Stack {
     const command = new NodejsFunction(this, 'counter-optimistic-concurrency-command-handler', {
       functionName: 'counter-optimistic-concurrency-command-handler',
       ...commonFunctionProps,
-      entry: resolve(__dirname, 'command.ts'),
+      entry: resolve(import.meta.dirname, 'command.ts'),
       environment: {
         ...commonFunctionEnv,
         eventStoreConfig: eventStore.config,

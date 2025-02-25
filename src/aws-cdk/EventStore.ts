@@ -4,10 +4,10 @@ import { AttributeType, Billing, ITable, ITableV2, StreamViewType, TableV2 } fro
 import { IEventBus } from 'aws-cdk-lib/aws-events'
 import { IGrantable } from 'aws-cdk-lib/aws-iam'
 import { ApplicationLogLevel, IFunction, LoggingFormat, Runtime, StartingPosition, SystemLogLevel } from 'aws-cdk-lib/aws-lambda'
-import { Construct } from 'constructs'
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
-import { resolve } from 'node:path'
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources'
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
+import { Construct } from 'constructs'
+import { resolve } from 'node:path'
 
 export interface IEventStore {
   readonly name: string
@@ -85,7 +85,7 @@ export class EventStore extends Construct implements IEventStore {
 
     this.notifier = new NodejsFunction(scope, `${id}-notifier`, {
       functionName: `${id}-notifier`,
-      entry: resolve(__dirname, './notify.ts'),
+      entry: resolve(import.meta.dirname, './notify.ts'),
       runtime: Runtime.NODEJS_22_X,
       loggingFormat: LoggingFormat.JSON,
       applicationLogLevelV2: logLevel,

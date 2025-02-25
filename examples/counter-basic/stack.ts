@@ -20,7 +20,7 @@ export class CounterStack extends Stack {
     const command = new NodejsFunction(this, 'counter-basic-command-handler', {
       functionName: 'counter-basic-command-handler',
       ...commonFunctionProps,
-      entry: resolve(__dirname, 'command.ts'),
+      entry: resolve(import.meta.dirname, 'command.ts'),
       environment: {
         ...commonFunctionEnv,
         eventStoreConfig: eventStore.config
@@ -39,7 +39,7 @@ export class CounterStack extends Stack {
     const query = new NodejsFunction(this, 'counter-basic-query-handler', {
       functionName: 'counter-basic-query-handler',
       ...commonFunctionProps,
-      entry: resolve(__dirname, 'query.ts'),
+      entry: resolve(import.meta.dirname, 'query.ts'),
       environment: {
         ...commonFunctionEnv,
         eventStoreConfig: eventStore.config
