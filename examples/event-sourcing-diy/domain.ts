@@ -9,7 +9,10 @@ export type Truck = `truck/${number}`
 export const isTruck = (x: string): x is Truck =>
   /truck\/\d+/.test(x)
 
-export type Flavour = 'Vanilla' | 'Chocolate' | 'Strawberry'
+export type Flavour =
+  | 'Vanilla'
+  | 'Chocolate'
+  | 'Strawberry'
 
 export const isFlavour = (x: string): x is Flavour =>
   x === 'Vanilla' || x === 'Chocolate' || x === 'Strawberry'
