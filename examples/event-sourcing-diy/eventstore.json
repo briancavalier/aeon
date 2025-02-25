@@ -1,5 +1,0 @@
-{
-  "eventSourcingDIY": {
-    "eventStoreConfig": "{\"name\":\"eventSourcingDIY-eventstore\",\"eventsTable\":\"eventSourcingDIY-eventstore\",\"metadataTable\":\"eventSourcingDIY-eventstore-metadata\",\"revisionIndex\":\"by-revision\"}"
-  }
-}
