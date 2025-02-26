@@ -11,11 +11,10 @@ export const isTruck = (x: string): x is Truck =>
 
 export type Flavour =
   | 'Vanilla'
-  | 'Chocolate'
   | 'Strawberry'
 
 export const isFlavour = (x: string): x is Flavour =>
-  x === 'Vanilla' || x === 'Chocolate' || x === 'Strawberry'
+  x === 'Vanilla' || x === 'Strawberry'
 
 export interface FlavourRestocked {
   readonly type: 'FlavourRestocked'

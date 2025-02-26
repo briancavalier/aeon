@@ -18,8 +18,8 @@ Aeon isn’t production-ready. It’s a playground for learning and experimentin
 1. 😊 [counter-cqrs](examples/counter-cqrs/) - builds on counter-basic by adding a separate, optimized read model and a new query API that answers queries using the read model.
 1. 😇 [counter-cqrs-lazy](examples/counter-cqrs-lazy/) - similar to counter-cqrs, but uses a lazy read-through (pull) strategy to update its read model instead of a subscription (push) strategy. 
 1. 😁 [counter-optimistic-concurrency](examples/counter-optimistic-concurrency/) - builds on counter-cqrs by adding a new command handler that uses optimistic concurrency control to ensure counter events are only appended when their history hasn't changed.
-1. 🥳 [counter-snapshot](examples/counter-snapshot/) - builds on counter-optimistic-concurrency by adding a new command handler that uses snapshots to update a counter without needing to read 
-its entire history.
+1. 🥳 [counter-snapshot](examples/counter-snapshot/) - builds on counter-optimistic-concurrency by adding a new command handler that uses snapshots to update a counter without needing to read its entire history.
+1. 🍦 [event-sourcing-diy](examples/event-sourcing-diy/) - ice cream truck example from [The Dev Owl](https://www.youtube.com/@TheDevOwl)'s [Event Sourcing DIY YouTube series](https://www.youtube.com/watch?v=zyp9pZ7jeK8&list=PL-nSd-yeckKh7Ts5EKChek7iXcgyUGDHa)
 
 ### Deploying examples
 
