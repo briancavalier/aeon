@@ -14,18 +14,14 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js"
+      "import": "./dist/esm/index.js"
     },
     "./aws-cdk/": {
-      "import": "./dist/esm/aws-cdk/index.js",
-      "require": "./dist/cjs/aws-cdk/index.js"
+      "import": "./dist/esm/aws-cdk/index.js"
     }
   },
   "scripts": {
-    "build": "npm run build:esm && npm run build:cjs",
-    "build:esm": "tsc --project ./tsconfig.build-esm.json --incremental --tsBuildInfoFile dist/esm/.tsbuildinfo",
-    "build:cjs": "tsc --project ./tsconfig.build-cjs.json --incremental --tsBuildInfoFile dist/cjs/.tsbuildinfo",
+    "build": "tsc --project ./tsconfig.build-esm.json --incremental --tsBuildInfoFile dist/esm/.tsbuildinfo",
     "test": "npx tsx --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit",
     "test:integration": "npx tsx --test test/**/*.test.ts",
