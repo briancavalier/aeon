@@ -28,7 +28,7 @@ export class CounterCQRSStack extends Stack {
     const update = new NodejsFunction(this, 'counter-cqrs-update-handler', {
       functionName: 'counter-update-handler',
       ...commonFunctionProps,
-      entry: resolve(__dirname, 'update.ts'),
+      entry: resolve(import.meta.dirname, 'update.ts'),
       environment: {
         ...commonFunctionEnv,
         viewTable: counterView.tableName
@@ -48,7 +48,7 @@ export class CounterCQRSStack extends Stack {
     const query = new NodejsFunction(this, 'counter-cqrs-query-handler', {
       functionName: 'counter-cqrs-query-handler',
       ...commonFunctionProps,
-      entry: resolve(__dirname, 'query.ts'),
+      entry: resolve(import.meta.dirname, 'query.ts'),
       environment: {
         ...commonFunctionEnv,
         viewTable: counterView.tableName

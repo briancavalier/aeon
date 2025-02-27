@@ -1,11 +1,11 @@
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb"
 import * as assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, it } from "node:test"
 import { append, fromConfigString, head, read, reduce } from "../src/eventstore"
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb"
 
-const { integrationTest } = JSON.parse(readFileSync(join(__dirname, 'test.json'), 'utf-8'))
+const { integrationTest } = JSON.parse(readFileSync(join(import.meta.dirname, 'test.json'), 'utf-8'))
 
 describe(read.name, () => {
   it('given empty key, returns zero events', async () => {

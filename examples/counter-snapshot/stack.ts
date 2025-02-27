@@ -22,7 +22,7 @@ export class CounterSnapshotStack extends Stack {
     const command = new NodejsFunction(this, 'counter-snapshot-command-handler', {
       functionName: 'counter-snapshot-command-handler',
       ...commonFunctionProps,
-      entry: resolve(__dirname, 'command.ts'),
+      entry: resolve(import.meta.dirname, 'command.ts'),
       environment: {
         ...commonFunctionEnv,
         eventStoreConfig: eventStore.config

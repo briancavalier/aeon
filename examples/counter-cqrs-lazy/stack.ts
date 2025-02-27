@@ -4,7 +4,7 @@ import { FunctionUrlAuthType } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { Construct } from 'constructs'
 import { resolve } from 'node:path'
-import { EventStoreSubscription, IEventStore } from '../../src/aws-cdk'
+import { IEventStore } from '../../src/aws-cdk'
 import { commonFunctionEnv, commonFunctionProps } from '../lib/cdk-defaults'
 
 export interface CounterCQRSLazyStackProps extends StackProps {
@@ -31,7 +31,7 @@ export class CounterCQRSLazyStack extends Stack {
     const query = new NodejsFunction(this, 'coutner-cqrs-lazy-query-handler', {
       functionName: 'coutner-cqrs-lazy-query-handler',
       ...commonFunctionProps,
-      entry: resolve(__dirname, 'query.ts'),
+      entry: resolve(import.meta.dirname, 'query.ts'),
       environment: {
         ...commonFunctionEnv,
         viewTable: counterView.tableName,
