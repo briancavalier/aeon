@@ -4,18 +4,6 @@ export type Event =
   | FlavourWentOutOfStock
   | FlavourWasNotInStock
 
-export type Truck = `truck/${number}`
-
-export const isTruck = (x: string): x is Truck =>
-  /truck\/\d+/.test(x)
-
-export type Flavour =
-  | 'Vanilla'
-  | 'Strawberry'
-
-export const isFlavour = (x: string): x is Flavour =>
-  x === 'Vanilla' || x === 'Strawberry'
-
 export interface FlavourRestocked {
   readonly type: 'FlavourRestocked'
   readonly flavour: Flavour
@@ -36,3 +24,14 @@ export interface FlavourWasNotInStock {
   readonly type: 'FlavourWasNotInStock'
   readonly flavour: Flavour
 }
+
+export type Flavour = 'Vanilla' | 'Strawberry'
+
+export const isFlavour = (x: string): x is Flavour =>
+  x === 'Vanilla' || x === 'Strawberry'
+
+export type Truck = `truck/${number}`
+
+export const isTruck = (x: string): x is Truck =>
+  /truck\/\d+/.test(x)
+
