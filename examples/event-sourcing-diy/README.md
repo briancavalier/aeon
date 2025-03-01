@@ -36,13 +36,13 @@ This example implements some details of the command and query handlers in a diff
 The CLI is runnable scripts:
 
 * **cli/restock.mts** - restock a flavour in a specific truck
-   * `cli/restock.mts Vanilla 3 truck/1` - add 3 Vanilla to truck 1
+   * `cli/restock.mts truck/1 Vanilla 3` - add 3 Vanilla to truck 1
 * **cli/sell.mts** - sell a flavour from a specific truck
-   * `cli/sell.mts Vanilla truck/1` - sell 1 Vanilla from truck 1
+   * `cli/sell.mts truck/1 Vanilla` - sell 1 Vanilla from truck 1
 * **cli/query-stock.mts** - query the current stock of a flavour from a specific truck
-   * `cli/query-stock.mts Vanilla truck/1` - show how many Vanilla are in stock on truck 1
+   * `cli/query-stock.mts truck/1 Vanilla` - show how many Vanilla are in stock on truck 1
 * **cli/query-sold.mts** - query how many of a flavour have been sold from a specific truck
-   * `cli/query-stock.mts Vanilla truck/1` - show how many Vanilla have been sold from truck 1
+   * `cli/query-stock.mts truck/1 Vanilla` - show how many Vanilla have been sold from truck 1
 * **cli/history.mts** - show the event history for a specific truck, _or_ from all trucks
    * `cli/history.mts truck/1` - show the event history of truck 1
    * `cli/history.mts` - show the event history of all trucks
