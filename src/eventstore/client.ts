@@ -1,13 +1,11 @@
-import { AttributeValue, DynamoDBClient, GetItemCommand, paginateQuery, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb'
+import { AttributeValue, DynamoDBClient, GetItemCommand, TransactWriteItemsCommand, paginateQuery } from '@aws-sdk/client-dynamodb'
+import { NativeAttributeValue, marshall, unmarshall } from '@aws-sdk/util-dynamodb'
 import { ok as assert } from 'node:assert'
 import { monotonicFactory, } from 'ulid'
-import { end, ensureInclusive, InclusiveRange, Revision, RangeInput, start } from './revision'
-import { getSlice, Slice } from './slice'
-import { marshall, NativeAttributeValue, unmarshall } from '@aws-sdk/util-dynamodb'
-import { Pending, Committed } from './event'
-import { paginate } from './dynamodb/paginate'
-import { Filter } from './filter'
 import { DynamoDBExpression, toFilterExpression } from './dynamodb/filter-expression'
+import { paginate } from './dynamodb/paginate'
+import { Committed, Pending } from './event'
+import { InclusiveRange, ReadOptions, Revision, end, ensureInclusive, start } from './revision'
 
 export interface EventStoreClient {
   readonly name: string
@@ -49,15 +47,15 @@ export const parseConfig = (configString: string): EventStoreConfig => {
 }
 
 export type AppendResult =
-  | Readonly<{ type: 'unchanged' }>
-  | Readonly<{ type: 'appended', count: number, revision: Revision }>
-  | Readonly<{ type: 'aborted/optimistic-concurrency', error: Error }>
-  | Readonly<{ type: 'aborted/unknown', error: unknown }>
+  | { readonly type: 'unchanged' }
+  | { readonly type: 'appended', readonly count: number, readonly revision: Revision }
+  | { readonly type: 'aborted/optimistic-concurrency', readonly error: Error }
+  | { readonly type: 'aborted/unknown', readonly error: unknown }
 
-export type AppendKeyOptions = Readonly<{
-  expectedRevision?: Revision,
-  idempotencyKey?: string
-}>
+export type AppendOptions = {
+  readonly expectedRevision?: Revision,
+  readonly idempotencyKey?: string
+}
 
 /**
  * Append events to the event store. Provide an idempotency key to ensure
@@ -66,7 +64,7 @@ export type AppendKeyOptions = Readonly<{
 export const append = async <const D extends NativeAttributeValue>(es: EventStoreClient, key: string, events: readonly Pending<D>[], {
   expectedRevision = end,
   idempotencyKey
-}: AppendKeyOptions = {}
+}: AppendOptions = {}
 ): Promise<AppendResult> => {
   if (events.length === 0) return { type: 'unchanged' }
 
@@ -138,16 +136,12 @@ export const append = async <const D extends NativeAttributeValue>(es: EventStor
   }
 }
 
-type ReadInput = RangeInput & Readonly<{
-  filter?: Filter<string>
-}>
-
 /**
  * Read a range of all events from the event store. Range is inclusive, and omitting
  * start will read from the beginning, and ommitting end will read to end of the
  * event store.  Omit range entirely to read all events.
  */
-export async function* readAll<A>(es: EventStoreClient, { filter, ...r }: ReadInput = {}): AsyncIterable<Committed<A>> {
+export async function* readAll<A>(es: EventStoreClient, { filter, ...r }: ReadOptions = {}): AsyncIterable<Committed<A>> {
   const range = ensureInclusive(r)
   if (range.limit <= 0 || range.start > range.end) return
 
@@ -181,7 +175,7 @@ export const head = async (es: EventStoreClient, key: string): Promise<Revision>
  * and omitting start will read from the beginning, and ommitting end will read to
  * end of the event store.  Omit range entirely to read all events for the specified key.
  */
-export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r }: ReadInput = {}): AsyncIterable<Committed<A>> {
+export async function* read<A>(es: EventStoreClient, key: string, { filter, ...r }: ReadOptions = {}): AsyncIterable<Committed<A>> {
   const range = ensureInclusive(r)
 
   if (range.start && range.end && range.start > range.end) return
@@ -212,6 +206,13 @@ const buildQuery = (tableName: string, keyName: string, keyValue: string, range:
   Limit: range.limit,
   ScanIndexForward: range.direction === 'forward'
 })
+
+type Slice = string & { readonly type: 'Slice' }
+
+const sliceLen = 5
+
+const getSlice = (p: Revision): Slice =>
+  p.slice(0, sliceLen) as Slice
 
 async function* getSlices(es: EventStoreClient, range: InclusiveRange): AsyncIterable<readonly Slice[]> {
   const pages = paginateQuery(es, {

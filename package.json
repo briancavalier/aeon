@@ -14,10 +14,12 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/esm/index.js"
+      "import": "./dist/esm/index.js",
+      "types": "./dist/esm/index.d.ts"
     },
     "./aws-cdk/": {
-      "import": "./dist/esm/aws-cdk/index.js"
+      "import": "./dist/esm/aws-cdk/index.js",
+      "types": "./dist/esm/aws-cdk/index.d.ts"
     }
   },
   "scripts": {

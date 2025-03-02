@@ -1,4 +1,4 @@
-import { Revision } from './revision';
+import { Revision } from './revision'
 
 export type Pending<D> = {
   readonly type: string

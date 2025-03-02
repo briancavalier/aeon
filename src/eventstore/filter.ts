@@ -1,8 +1,8 @@
 export type Filter<A> =
-    | Readonly<{ type: 'and', value: readonly Filter<A>[] }>
-    | Readonly<{ type: 'or', value: readonly Filter<A>[] }>
-    | Readonly<{ type: 'prefix', value: A, attribute: string }>
-    | Readonly<{ type: 'comparison', value: A, attribute: string, operator: Operator }>
+  | { readonly type: 'and', readonly value: readonly Filter<A>[] }
+  | { readonly type: 'or', readonly value: readonly Filter<A>[] }
+  | { readonly type: 'prefix', readonly value: A, readonly attribute: string }
+  | { readonly type: 'comparison', readonly value: A, readonly attribute: string, readonly operator: Operator }
 
 export type Operator = '=' | '>' | '>=' | '<' | '<=' | '<>'
 
