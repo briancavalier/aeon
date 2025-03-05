@@ -1,9 +1,9 @@
-import { EventStoreClient, read, reduce } from "../../src/eventstore"
+import { EventStoreClient, reduce } from "../../src/eventstore"
 import { Event, Flavour, Truck } from "./domain"
 import { flavoursInStock, soldFlavours, zeroFlavourCounts } from "./projection"
 
 export const flavourInStockOfTruck = async (store: EventStoreClient, truck: Truck, flavour: Flavour): Promise<number> => {
-  const events = read<Event>(store, truck)
+  const events = store.read<Event>(truck)
 
   const flavourStock = await reduce(
     events,
@@ -15,7 +15,7 @@ export const flavourInStockOfTruck = async (store: EventStoreClient, truck: Truc
 }
 
 export const flavourSoldOfTruck = async (store: EventStoreClient, truck: Truck, flavour: Flavour): Promise<number> => {
-  const events = read<Event>(store, truck)
+  const events = store.read<Event>(truck)
 
   const flavourStock = await reduce(
     events,

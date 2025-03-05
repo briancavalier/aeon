@@ -1,14 +1,14 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { append, fromConfigString, head, read, reduce } from '../../src/eventstore'
-import { CounterEvent } from '../domain'
+import { DynamoDBEventStoreClient, reduce } from '../../src/eventstore'
 import { CounterCommand, decide, initialValue, update } from "../aggregate"
+import { CounterEvent } from '../domain'
 
 assert(process.env.eventStoreConfig)
 
 const client = new DynamoDBClient({})
-const store = fromConfigString(process.env.eventStoreConfig, client)
+const store = DynamoDBEventStoreClient.fromConfigString(process.env.eventStoreConfig, client)
 
 export const handler = async (event: APIGatewayProxyEvent) => {
   // In a real app, we'd parse+validate the incoming command
@@ -16,8 +16,8 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   // Read the revision of the latest event for the counter
   // This is the optimistic concurrency control mechanism
-  const revision = await head(store, `counter/${command.name}`)
-  const history = read<CounterEvent>(store, `counter/${command.name}`)
+  const revision = await store.head(`counter/${command.name}`)
+  const history = store.read<CounterEvent>(`counter/${command.name}`)
 
   // Rebuild the counter's current value
   const value = await reduce(history, (value, { data }) => update(value, data), initialValue)
@@ -30,8 +30,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   // events have been appended between the time we read the latest
   // event and the time we're appending the new events.
   // That guarantees the current state of the counter hasn't changed.
-  const result = await append(
-    store,
+  const result = await store.append(
     `counter/${command.name}`,
     events.map(data => ({ ...data, data })),
     { expectedRevision: revision }

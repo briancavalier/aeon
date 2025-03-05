@@ -1,4 +1,4 @@
-import { EventStoreConfig } from './client'
+import { EventStoreConfig } from './event-store-client'
 import { Revision } from './revision'
 
 export type EventSummary = {

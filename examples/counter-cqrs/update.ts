@@ -1,7 +1,7 @@
 import { DynamoDBClient, ReturnValue } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import assert from 'node:assert'
-import { fromConfig, Notification, Revision, prefix, readAll } from '../../src/eventstore'
+import { DynamoDBEventStoreClient, Notification, Revision, prefix } from '../../src/eventstore'
 import { CounterEvent } from '../domain'
 import { getRevision, updateRevision } from '../lib/revision'
 
@@ -15,7 +15,7 @@ const docClient = DynamoDBDocumentClient.from(client)
 // from events. This allows queries to be answered simply
 // by getting the answer directly from the view table.
 export const handler = async ({ eventStoreConfig, revision }: Notification) => {
-  const store = fromConfig(eventStoreConfig, client)
+  const store = DynamoDBEventStoreClient.fromConfig(eventStoreConfig, client)
 
   console.debug({ eventStoreConfig, revision })
 
@@ -24,7 +24,7 @@ export const handler = async ({ eventStoreConfig, revision }: Notification) => {
   const start = await getRevision(client, viewTable)
 
   // Read counter events between last seen and end
-  const events = readAll<CounterEvent>(store, {
+  const events = store.readAll<CounterEvent>({
     start,
     startExclusive: true,
     end: revision,

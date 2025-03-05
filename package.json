@@ -26,9 +26,9 @@
     "build": "tsc --project ./tsconfig.build-esm.json --incremental --tsBuildInfoFile dist/esm/.tsbuildinfo",
     "test": "npx tsx --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "test:integration": "npx tsx --test test/**/*.test.ts",
-    "pretest:integration": "cd test && npx cdk deploy --outputs-file=test.json --require-approval=never",
-    "posttest:integration": "cd test && npx cdk destroy --force"
+    "test:dynamodb": "npx tsx --test test/dynamodb/*.test.ts",
+    "pretest:dynamodb": "cd test/dynamodb && npx cdk deploy --require-approval=never",
+    "posttest:dynamodb": "cd test/dynamodb && npx cdk destroy --force"
   },
   "devDependencies": {
     "@aws-sdk/client-dynamodb": "^3.758.0",

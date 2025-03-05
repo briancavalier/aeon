@@ -1,0 +1,4 @@
+{
+  "app": "npx tsx index",
+  "outputsFile": "test.json"
+}

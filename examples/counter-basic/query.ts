@@ -1,11 +1,11 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { fromConfigString, read } from '../../src/eventstore'
+import { DynamoDBEventStoreClient } from '../../src/eventstore'
 import { CounterEvent } from '../domain'
 
 assert(process.env.eventStoreConfig)
-const store = fromConfigString(process.env.eventStoreConfig, new DynamoDBClient({}))
+const store = DynamoDBEventStoreClient.fromConfigString(process.env.eventStoreConfig, new DynamoDBClient({}))
 
 // Queries can be use-case specific, tailored to answer specific user or
 // business questions.  This query returns the counter's current value,
@@ -16,7 +16,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   if (!name) return { statusCode: 400, body: 'name is required' }
 
   // Read all the events for the counter with the given key
-  const events = read<CounterEvent>(store, `counter/${name}`)
+  const events = store.read<CounterEvent>(`counter/${name}`)
 
   // Build answer from events
   let counter = { value: 0, increments: 0, decrements: 0 }

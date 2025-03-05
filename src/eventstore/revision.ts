@@ -1,4 +1,4 @@
-import { Filter } from './filter'
+import { ReadOptions } from './event-store-client'
 
 export type Revision = string & { readonly type: 'Revision' }
 
@@ -7,22 +7,6 @@ export const end = 'Z' as Revision
 
 export const min = '00000000000000000000000000' as Revision
 export const max = '7ZZZZZZZZZZZZZZZZZZZZZZZZZ' as Revision
-
-/**
- * Range of revisions from start to end. Start and end
- * are inclusive by default, but can be made exclusive by
- * setting `startExclusive` and/or `endExclusive` to true,
- * respectively.
- */
-export type ReadOptions = {
-  readonly start?: Revision
-  readonly startExclusive?: boolean
-  readonly end?: Revision
-  readonly endExclusive?: boolean
-  readonly limit?: number
-  readonly direction?: 'forward' | 'backward'
-  readonly filter?: Filter<string>
-}
 
 /**
  * Inclusive range of revisions from start to end. Start and end
