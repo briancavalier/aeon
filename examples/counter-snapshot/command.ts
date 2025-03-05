@@ -1,15 +1,15 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { append, fromConfigString, read, reduce, first, head } from '../../src/eventstore'
-import { CounterEvent } from '../domain'
+import { DynamoDBEventStoreClient, first, reduce } from '../../src/eventstore'
 import { CounterCommand, decide, initialValue, update } from "../aggregate"
+import { CounterEvent } from '../domain'
 import { CounterSnapshot, snapshotRange } from './counter-snapshot'
 
 assert(process.env.eventStoreConfig)
 
 const client = new DynamoDBClient({})
-const store = fromConfigString(process.env.eventStoreConfig, client)
+const store = DynamoDBEventStoreClient.fromConfigString(process.env.eventStoreConfig, client)
 
 // Record an updated snapshot every 10 events. In a real application, this number
 // may be higher, tuned to the application needs.
@@ -21,10 +21,10 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   // Read the latest snapshot from the snapshot store
   // If there are no snapshots yet, this will return undefined
-  const snapshotRevision = await head(store, `counter-snapshot/${command.name}`)
-  const snapshot = await first(read<CounterSnapshot>(
-    store,
-    `counter-snapshot/${command.name}`,
+  const snapshotKey = `counter-snapshot/${command.name}`
+  const snapshotRevision = await store.head(snapshotKey)
+  const snapshot = await first(store.read<CounterSnapshot>(
+    snapshotKey,
     { start: snapshotRevision, end: snapshotRevision, limit: 1 }
   ))
 
@@ -34,8 +34,10 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   const range = snapshotRange(snapshot?.data)
   console.debug({ snapshot, range })
 
-  const revision = await head(store, `counter/${command.name}`)
-  const history = read<CounterEvent>(store, `counter/${command.name}`, { ...range, end: revision })
+  const counterKey = `counter/${command.name}`
+
+  const revision = await store.head(counterKey)
+  const history = store.read<CounterEvent>(counterKey, { ...range, end: revision })
 
   // Rebuild the counter's current value
   // If we have a snapshot, start from its value. Otherwise, start
@@ -56,9 +58,8 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   // Append the new events to the event store
   // This returns the revision of the last event appended
-  const result = await append(
-    store,
-    `counter/${command.name}`,
+  const result = await store.append(
+    counterKey,
     events.map(data => ({ ...data, data })),
     { expectedRevision: revision }
   )
@@ -70,7 +71,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     const newValue = events.reduce(update, value)
     console.debug({ msg: 'Adding new snapshot', newValue, revision: result.revision })
 
-    await append(store, `counter-snapshot/${command.name}`, [{
+    await store.append(snapshotKey, [{
       type: 'snapshot-created',
       data: { revision: result.revision, value: newValue }
     }], { expectedRevision: snapshotRevision })

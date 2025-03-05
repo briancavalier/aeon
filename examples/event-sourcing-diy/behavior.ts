@@ -1,4 +1,4 @@
-import { AppendResult, EventStoreClient, append, head, read, reduce } from "../../src/eventstore"
+import { AppendResult, EventStoreClient, reduce } from "../../src/eventstore"
 import { Event, Flavour, Truck } from "./domain"
 import { FlavourCounts, flavoursInStock, zeroFlavourCounts } from "./projection"
 
@@ -44,15 +44,14 @@ export const decide = (stock: FlavourStock, c: Command): readonly Event[] => {
 }
 
 export const handleCommand = async (store: EventStoreClient, command: Command): Promise<AppendResult> => {
-  const revision = await head(store, command.truck)
-  const history = read<Event>(store, command.truck, { end: revision })
+  const revision = await store.head(command.truck)
+  const history = store.read<Event>(command.truck, { end: revision })
 
   const stock = await reduce(history, (stock, { data }) => flavoursInStock(stock, data), initialStock)
 
   const events = decide(stock, command)
 
-  return append(
-    store,
+  return store.append(
     command.truck,
     events.map(data => ({ type: data.type, data })),
     { expectedRevision: revision }

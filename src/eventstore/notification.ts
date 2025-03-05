@@ -1,8 +1,11 @@
-import { EventStoreConfig } from './client'
 import { Revision } from './revision'
 
-export type Notification = Readonly<{
-  eventStoreConfig: EventStoreConfig,
-  revision: Revision
-  events: readonly Readonly<{ key: string, type: string }>[]
-}>
+export type Notification = {
+  readonly revision: Revision
+  readonly events: readonly EventSummary[]
+}
+
+export type EventSummary = {
+  readonly key: string,
+  readonly type: string
+}

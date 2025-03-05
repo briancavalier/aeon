@@ -1,12 +1,13 @@
 import { DynamoDBClient, ReturnValue } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import assert from 'node:assert'
-import { fromConfig, Notification, Revision, prefix, readAll } from '../../src/eventstore'
+import { DynamoDBEventStoreClient, Notification, Revision, prefix } from '../../src/eventstore'
 import { CounterEvent } from '../domain'
 import { getRevision, updateRevision } from '../lib/revision'
 
 assert(process.env.viewTable)
-const { viewTable } = process.env
+assert(process.env.eventStoreConfig)
+const { viewTable, eventStoreConfig } = process.env
 
 const client = new DynamoDBClient({})
 const docClient = DynamoDBDocumentClient.from(client)
@@ -14,8 +15,8 @@ const docClient = DynamoDBDocumentClient.from(client)
 // Build an optimized view of counters incrementally
 // from events. This allows queries to be answered simply
 // by getting the answer directly from the view table.
-export const handler = async ({ eventStoreConfig, revision }: Notification) => {
-  const store = fromConfig(eventStoreConfig, client)
+export const handler = async ({ revision }: Notification) => {
+  const store = DynamoDBEventStoreClient.fromConfigString(eventStoreConfig, client)
 
   console.debug({ eventStoreConfig, revision })
 
@@ -24,7 +25,7 @@ export const handler = async ({ eventStoreConfig, revision }: Notification) => {
   const start = await getRevision(client, viewTable)
 
   // Read counter events between last seen and end
-  const events = readAll<CounterEvent>(store, {
+  const events = store.readAll<CounterEvent>({
     start,
     startExclusive: true,
     end: revision,

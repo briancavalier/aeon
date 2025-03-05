@@ -1,21 +1,21 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { append, fromConfigString, read } from '../../src/eventstore'
-import { CounterEvent } from '../domain'
+import { DynamoDBEventStoreClient } from '../../src/eventstore'
 import { CounterCommand, decide, initialValue, update } from "../aggregate"
+import { CounterEvent } from '../domain'
 
 assert(process.env.eventStoreConfig)
 
 const client = new DynamoDBClient({})
-const store = fromConfigString(process.env.eventStoreConfig, client)
+const store = DynamoDBEventStoreClient.fromConfigString(process.env.eventStoreConfig, client)
 
 export const handler = async (event: APIGatewayProxyEvent) => {
   // In a real app, we'd parse+validate the incoming command
   const command = JSON.parse(event.body ?? '') as CounterCommand
 
   // Read the counter's event history from the event store
-  const history = read<CounterEvent>(store, `counter/${command.name}`)
+  const history = store.read<CounterEvent>(`counter/${command.name}`)
 
   // Rebuild the counter's current value from the event history
   let value = initialValue
@@ -30,5 +30,5 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   // Append the new events to the event store
   // This returns the revision of the last event appended
-  return append(store, `counter/${command.name}`, events.map(data => ({ type: data.type, data })))
+  return store.append(`counter/${command.name}`, events.map(data => ({ type: data.type, data })))
 }

@@ -1,6 +1,7 @@
 export * from './async-iterable'
-export * from './client'
-export * from './event'
+export * from './dynamodb'
+export * from './event-store-client'
 export * from './filter'
 export * from './notification'
 export * from './revision'
+
