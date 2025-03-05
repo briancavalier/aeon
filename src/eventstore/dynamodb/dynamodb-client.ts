@@ -7,25 +7,17 @@ import { InclusiveRange, Revision, end, ensureInclusive, start } from "../revisi
 import { DynamoDBExpression, toFilterExpression } from "./filter-expression"
 import { paginate } from "./paginate"
 
-export class DynamoDBEventStoreClient<Event extends Readonly<Record<string, unknown>> = Readonly<Record<string, unknown>>> implements EventStoreClient<Event> {
+export class DynamoDBEventStoreClient implements EventStoreClient {
   constructor(
     public readonly name: string,
     public readonly eventsTable: string,
     public readonly metadataTable: string,
     public readonly revisionIndex: string,
     public readonly client: DynamoDBClient,
-    public readonly nextRevision: (epochMilliseconds: number) => Revision
+    private readonly nextRevision: (epochMilliseconds: number) => Revision
   ) { }
 
-  static fromConfig({ name, eventsTable, metadataTable, revisionIndex }: EventStoreConfig, client: DynamoDBClient, nextRevision?: (epochMilliseconds?: number) => Revision): DynamoDBEventStoreClient {
-    return new DynamoDBEventStoreClient(name, eventsTable, metadataTable, revisionIndex, client, nextRevision ?? monotonicFactory() as (t: number) => Revision)
-  }
-
-  static fromConfigString(configString: string, client: DynamoDBClient, nextRevision?: (epochMilliseconds?: number) => Revision): DynamoDBEventStoreClient {
-    return DynamoDBEventStoreClient.fromConfig(parseConfig(configString), client, nextRevision)
-  }
-
-  async append<E extends Event>(key: string, events: readonly Pending<E>[], { idempotencyKey, expectedRevision = end }: AppendOptions = {}): Promise<AppendResult> {
+  async append<Event>(key: string, events: readonly Pending<Event>[], { idempotencyKey, expectedRevision = end }: AppendOptions = {}): Promise<AppendResult> {
     if (events.length === 0) return { type: 'unchanged' }
 
     const now = Date.now()
@@ -86,7 +78,7 @@ export class DynamoDBEventStoreClient<Event extends Readonly<Record<string, unkn
     })).then(({ Item }) => Item?.revision.S as Revision ?? start)
   }
 
-  async *read<E extends Event>(key: string, { filter, ...r }: ReadOptions = {}): AsyncIterable<Committed<E>> {
+  async *read<Event>(key: string, { filter, ...r }: ReadOptions = {}): AsyncIterable<Committed<Event>> {
     const range = ensureInclusive(r)
     if (range.start && range.end && range.start > range.end) return
 
@@ -94,10 +86,10 @@ export class DynamoDBEventStoreClient<Event extends Readonly<Record<string, unkn
 
     const results = paginate(this.client, range.limit, queryEvents(this.eventsTable, 'key', key, range, f))
 
-    for await (const item of results) yield toEvent<E>(item)
+    for await (const item of results) yield toEvent<Event>(item)
   }
 
-  async *readAll<E extends Event>({ filter, ...r }: ReadOptions = {}): AsyncIterable<Committed<E>> {
+  async *readAll<Event>({ filter, ...r }: ReadOptions = {}): AsyncIterable<Committed<Event>> {
     const range = ensureInclusive(r)
     if (range.limit <= 0 || range.start > range.end) return
 
@@ -109,7 +101,7 @@ export class DynamoDBEventStoreClient<Event extends Readonly<Record<string, unkn
       for (const slice of page) {
         const results = paginate(this.client, range.limit, queryEvents(this.eventsTable, 'slice', slice, range, f, this.revisionIndex))
 
-        for await (const item of results) yield toEvent<E>(item)
+        for await (const item of results) yield toEvent<Event>(item)
       }
     }
   }
@@ -121,6 +113,12 @@ export type EventStoreConfig = {
   readonly metadataTable: string
   readonly revisionIndex: string
 }
+
+export const fromConfig = ({ name, eventsTable, metadataTable, revisionIndex }: EventStoreConfig, client: DynamoDBClient, nextRevision?: (epochMilliseconds?: number) => Revision): DynamoDBEventStoreClient =>
+  new DynamoDBEventStoreClient(name, eventsTable, metadataTable, revisionIndex, client, nextRevision ?? monotonicFactory() as (t: number) => Revision)
+
+export const fromConfigString = (configString: string, client: DynamoDBClient, nextRevision?: (epochMilliseconds?: number) => Revision): DynamoDBEventStoreClient =>
+  fromConfig(parseConfig(configString), client, nextRevision)
 
 export const parseConfig = (configString: string): EventStoreConfig => {
   try {

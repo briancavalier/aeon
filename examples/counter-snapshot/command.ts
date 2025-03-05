@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { DynamoDBEventStoreClient, first, reduce } from '../../src/eventstore'
+import { DynamoDB, first, reduce } from '../../src/eventstore'
 import { CounterCommand, decide, initialValue, update } from "../aggregate"
 import { CounterEvent } from '../domain'
 import { CounterSnapshot, snapshotRange } from './counter-snapshot'
@@ -9,7 +9,7 @@ import { CounterSnapshot, snapshotRange } from './counter-snapshot'
 assert(process.env.eventStoreConfig)
 
 const client = new DynamoDBClient({})
-const store = DynamoDBEventStoreClient.fromConfigString(process.env.eventStoreConfig, client)
+const store = DynamoDB.fromConfigString(process.env.eventStoreConfig, client)
 
 // Record an updated snapshot every 10 events. In a real application, this number
 // may be higher, tuned to the application needs.

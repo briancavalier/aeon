@@ -23,14 +23,14 @@ export type Committed<A> = Pending<A> & {
 /**
  * The core operations of an event store.
  */
-export interface EventStoreClient<Event = unknown> {
-  append<E extends Event>(key: string, events: readonly Pending<E>[], o?: AppendOptions): Promise<AppendResult>
+export interface EventStoreClient {
+  append<Event>(key: string, events: readonly Pending<Event>[], o?: AppendOptions): Promise<AppendResult>
 
   head(key: string): Promise<Revision>
 
-  read<E extends Event>(key: string, o?: ReadOptions): AsyncIterable<Committed<E>>
+  read<Event>(key: string, o?: ReadOptions): AsyncIterable<Committed<Event>>
 
-  readAll<E extends Event>(o?: ReadOptions): AsyncIterable<Committed<E>>
+  readAll<Event>(o?: ReadOptions): AsyncIterable<Committed<Event>>
 }
 
 /**

@@ -1,13 +1,12 @@
+import { AttributeValue } from '@aws-sdk/client-dynamodb'
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge'
 import { DynamoDBStreamEvent } from 'aws-lambda'
-import { ok as assert } from 'node:assert'
-import { parseConfig, start } from '../eventstore'
-import { AttributeValue } from '@aws-sdk/client-dynamodb'
+import { ok as assert } from 'node:assert/strict'
+import { start } from '../eventstore'
 
-assert(process.env.eventStoreConfig)
+assert(process.env.source)
 assert(process.env.eventBusName)
-
-const eventStoreConfig = parseConfig(process.env.eventStoreConfig)
+const { source, eventBusName } = process.env
 
 const client = new EventBridgeClient()
 
@@ -25,15 +24,15 @@ export const handler = ({ Records }: DynamoDBStreamEvent) => {
     return { key: key.S, revision: revision.S, type: type.S, committedAt: committedAt.S }
   })
 
-  const notification = { eventStoreConfig, revision, events }
+  const notification = { revision, events }
   console.debug({ msg: 'Notifying', ...notification })
 
   return client.send(new PutEventsCommand({
     Entries: [{
-      EventBusName: process.env.eventBusName,
+      EventBusName: eventBusName,
       Detail: JSON.stringify(notification),
       DetailType: 'appended',
-      Source: eventStoreConfig.name,
+      Source: source,
     }]
   }))
 }

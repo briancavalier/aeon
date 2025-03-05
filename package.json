@@ -20,13 +20,17 @@
     "./aws-cdk/": {
       "import": "./dist/esm/aws-cdk/index.js",
       "types": "./dist/esm/aws-cdk/index.d.ts"
+    },
+    "./dynamodb": {
+      "import": "./dist/esm/dynamodb/index.js",
+      "types": "./dist/esm/dynamodb/index.d.ts"
     }
   },
   "scripts": {
     "build": "tsc --project ./tsconfig.build-esm.json --incremental --tsBuildInfoFile dist/esm/.tsbuildinfo",
-    "test": "npx tsx --test src/**/*.test.ts",
+    "test": "npx tsx --test 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit",
-    "test:dynamodb": "npx tsx --test test/dynamodb/*.test.ts",
+    "test:dynamodb": "npx tsx --test 'test/dynamodb/*.test.ts'",
     "pretest:dynamodb": "cd test/dynamodb && npx cdk deploy --require-approval=never",
     "posttest:dynamodb": "cd test/dynamodb && npx cdk destroy --force"
   },
