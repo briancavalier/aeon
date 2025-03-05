@@ -31,7 +31,8 @@ export class CounterCQRSStack extends Stack {
       entry: resolve(import.meta.dirname, 'update.ts'),
       environment: {
         ...commonFunctionEnv,
-        viewTable: counterView.tableName
+        viewTable: counterView.tableName,
+        eventStoreConfig: props.eventStore.config
       }
     })
 
