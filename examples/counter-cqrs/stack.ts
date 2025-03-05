@@ -32,7 +32,7 @@ export class CounterCQRSStack extends Stack {
       environment: {
         ...commonFunctionEnv,
         viewTable: counterView.tableName,
-        eventStoreConfig: props.eventStore.config
+        source: props.eventStore.name
       }
     })
 
