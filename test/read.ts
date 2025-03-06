@@ -77,15 +77,15 @@ export const testRead = (store: EventStoreClient) => {
       it('given key with events, returns events matching filter', async () => {
         const key = `test/${randomUUID()}`
         const n = 10
-        const initialEvents = Array.from({ length: n }, (_, value) => ({ type: `test-${value}`, data: { value } }))
+        const initialEvents = Array.from({ length: n }, (_, value) => ({ type: `test`, data: { value } }))
         await store.append(key, initialEvents)
 
-        const events = store.read(key, { filter: lte('type', 'test-3') })
+        const events = store.read<{ readonly value: number }>(key, { filter: { data: { value: lte(3) } } })
 
-        const results = await reduce(events, (results, event) => [...results, event], [] as Committed<unknown>[])
+        const results = await reduce(events, (results, event) => [...results, event], [] as Committed<{ readonly value: number }>[])
 
         assert.equal(results.length, 4)
-        results.forEach((e) => assert.ok(e.type <= 'test-3'))
+        results.forEach((e) => assert.ok(e.data.value <= 3))
       })
     })
   })

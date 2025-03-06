@@ -1,51 +1,53 @@
-import { NativeAttributeValue, convertToAttr } from '@aws-sdk/util-dynamodb'
-import { Filter } from "../filter"
+import { AttributeValue } from '@aws-sdk/client-dynamodb'
+import { marshall } from '@aws-sdk/util-dynamodb'
+import { Filter, hasType } from "../filter"
 
 export type DynamoDBExpression = {
   readonly FilterExpression?: string
   readonly ExpressionAttributeNames?: Record<string, string>
-  readonly ExpressionAttributeValues?: Record<string, unknown>
+  readonly ExpressionAttributeValues?: Record<string, AttributeValue>
 }
 
-export function toFilterExpression(
-  exp: Filter<string>
+export function toFilterExpression<A>(
+  filter: Filter<A>
 ): DynamoDBExpression {
-  const state: RenderState = { names: {}, values: {} }
-  return {
-    FilterExpression: render(exp, state),
-    ExpressionAttributeNames: state.names,
-    ExpressionAttributeValues: state.values,
-  }
-}
-
-type RenderState = {
-  readonly names: Record<string, string>
-  readonly values: Record<string, unknown>
-}
-
-function render<A extends NativeAttributeValue>(e: Filter<A>, state: RenderState): string {
   let counter = 0
+  const values: Record<string, A> = {}
+  const names: Record<string, string> = {}
 
-  switch (e.type) {
-    case 'and': {
-      return `(${e.value.map(e => render(e, state)).join(' and ')})`
-    }
-    case 'or': {
-      return `(${e.value.map(e => render(e, state)).join(' or ')})`
-    }
-    case 'prefix': {
-      const attributePlaceholder = `#attr${counter++}`
-      state.names[attributePlaceholder] = e.attribute
+  function traverse(filter: Filter<A>, path: string[] = []): string | undefined {
+    if (hasType(filter)) {
+      if (filter._type === 'true') return undefined
+
+      const attributePath = path.map((part) => {
+        const placeholder = `#${part}`
+        names[placeholder] = part
+        return placeholder
+      }).join('.')
+
+      if (filter._type === 'exists') return `attribute_exists(${attributePath})`
+
       const placeholder = `:val${counter++}`
-      state.values[placeholder] = convertToAttr(e.value)
-      return `begins_with(${attributePlaceholder}, ${placeholder})`
+      values[placeholder] = filter.value
+
+      switch (filter._type) {
+        case 'prefix': return `begins_with(${attributePath}, ${placeholder})`
+        default: return `${attributePath} ${filter._type} ${placeholder}`
+      }
     }
-    default: {
-      const attributePlaceholder = `#attr${counter++}`
-      state.names[attributePlaceholder] = e.attribute
-      const placeholder = `:val${counter++}`
-      state.values[placeholder] = convertToAttr(e.value)
-      return `(${attributePlaceholder} ${e.type} ${placeholder})`
+
+    const expressions: string[] = []
+    for (const [key, subFilter] of Object.entries(filter)) {
+      const subExpression = traverse(subFilter, [...path, key])
+      if (subExpression) expressions.push(subExpression)
     }
+
+    return expressions.length > 0 ? expressions.join(' AND ') : undefined
+  }
+
+  return {
+    FilterExpression: traverse(filter),
+    ExpressionAttributeValues: marshall(values, { removeUndefinedValues: true }),
+    ExpressionAttributeNames: names
   }
 }

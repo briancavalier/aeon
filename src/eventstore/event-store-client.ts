@@ -64,5 +64,5 @@ export type ReadOptions = {
   readonly endExclusive?: boolean
   readonly limit?: number
   readonly direction?: 'forward' | 'backward'
-  readonly filter?: Filter<string>
+  readonly filter?: Filter<string | number | boolean>
 }

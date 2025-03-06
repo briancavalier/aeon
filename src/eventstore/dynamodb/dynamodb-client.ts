@@ -3,6 +3,7 @@ import { marshall, unmarshall } from '@aws-sdk/util-dynamodb'
 import { ok as assert } from "node:assert/strict"
 import { monotonicFactory } from "ulid"
 import { AppendOptions, AppendResult, Committed, EventStoreClient, Pending, ReadOptions } from '../event-store-client'
+import { always } from "../filter"
 import { InclusiveRange, Revision, end, ensureInclusive, start } from "../revision"
 import { DynamoDBExpression, toFilterExpression } from "./filter-expression"
 import { paginate } from "./paginate"
@@ -78,28 +79,26 @@ export class DynamoDBEventStoreClient implements EventStoreClient {
     })).then(({ Item }) => Item?.revision.S as Revision ?? start)
   }
 
-  async *read<Event>(key: string, { filter, ...r }: ReadOptions = {}): AsyncIterable<Committed<Event>> {
+  async *read<Event>(key: string, { filter = always, ...r }: ReadOptions = {}): AsyncIterable<Committed<Event>> {
     const range = ensureInclusive(r)
-    if (range.start && range.end && range.start > range.end) return
+    if (range.limit <= 0 || range.start > range.end) return
 
-    const f = filter ? toFilterExpression(filter) : {}
-
-    const results = paginate(this.client, range.limit, queryEvents(this.eventsTable, 'key', key, range, f))
+    const query = queryEvents(this.eventsTable, 'key', key, range, toFilterExpression(filter))
+    const results = paginate(this.client, range.limit, query)
 
     for await (const item of results) yield toEvent<Event>(item)
   }
 
-  async *readAll<Event>({ filter, ...r }: ReadOptions = {}): AsyncIterable<Committed<Event>> {
+  async *readAll<Event>({ filter = always, ...r }: ReadOptions = {}): AsyncIterable<Committed<Event>> {
     const range = ensureInclusive(r)
     if (range.limit <= 0 || range.start > range.end) return
-
-    const f = filter ? toFilterExpression(filter) : {}
 
     const slices = getSlices(this.client, this.metadataTable, range)
 
     for await (const page of slices) {
       for (const slice of page) {
-        const results = paginate(this.client, range.limit, queryEvents(this.eventsTable, 'slice', slice, range, f, this.revisionIndex))
+        const query = queryEvents(this.eventsTable, 'slice', slice, range, toFilterExpression(filter), this.revisionIndex)
+        const results = paginate(this.client, range.limit, query)
 
         for await (const item of results) yield toEvent<Event>(item)
       }
@@ -149,19 +148,19 @@ const putEvent = <E>(table: string, key: string, committedAt: string, e: Pending
   }
 })
 
-const queryEvents = (tableName: string, keyName: string, keyValue: string, range: InclusiveRange, f: DynamoDBExpression = {}, indexName?: string) => ({
+const queryEvents = (tableName: string, keyName: string, keyValue: string, range: InclusiveRange, f: DynamoDBExpression, indexName?: string) => ({
   TableName: tableName,
   IndexName: indexName,
-  KeyConditionExpression: '#key = :key AND #revision between :start AND :end',
+  KeyConditionExpression: `#${keyName} = :${keyName} AND #revision between :start AND :end`,
   FilterExpression: f.FilterExpression,
   ExpressionAttributeNames: {
     ...f.ExpressionAttributeNames,
-    '#key': keyName,
+    [`#${keyName}`]: keyName,
     '#revision': 'revision'
   },
   ExpressionAttributeValues: {
     ...f.ExpressionAttributeValues,
-    ':key': { S: keyValue },
+    [`:${keyName}`]: { S: keyValue },
     ':start': { S: range.start },
     ':end': { S: range.end }
   },

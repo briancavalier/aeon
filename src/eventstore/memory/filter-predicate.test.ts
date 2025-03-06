@@ -1,65 +1,150 @@
-import { describe, it } from 'node:test'
-import * as assert from 'node:assert/strict'
-import { predicate } from './filter-predicate'
-import { and, or, prefix, eq, gt, gte, lt, lte, ne } from '../filter'
+import * as assert from "node:assert/strict"
+import { describe, it } from "node:test"
+import { interpretFilter } from "./filter-predicate.js"
 
-describe('predicate', () => {
-  it('should return true for an always true filter', () => {
-    const alwaysTrue = predicate({ type: 'and', value: [] })
-    assert.equal(alwaysTrue({}), true)
+describe(interpretFilter.name, () => {
+  describe('_type: true', () => {
+    it('should return true for true filter', () => {
+      const filter = { _type: 'true' } as const
+      const item = {}
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
   })
 
-  it('should evaluate and filter correctly', () => {
-    const filter = and(eq('a', 1), gt('b', 2))
-    const pred = predicate(filter)
+  describe('_type: exists', () => {
+    it('should return true if the field exists', () => {
+      const filter = { _type: 'exists' } as const
+      const item = 'value'
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
 
-    assert.equal(pred({ a: 1, b: 3 }), true)
-    assert.equal(pred({ a: 1, b: 2 }), false)
-    assert.equal(pred({ a: 2, b: 3 }), false)
+    it('should return false if the field does not exist', () => {
+      const filter = { _type: 'exists' } as const
+      assert.strictEqual(interpretFilter(filter, undefined), false)
+    })
   })
 
-  it('should evaluate or filter correctly', () => {
-    const filter = or(eq('a', 1), gt('b', 2))
-    const pred = predicate(filter)
+  describe('_type: prefix', () => {
+    it('should return true if the field value starts with the prefix', () => {
+      const filter = { _type: 'prefix', value: 'pre' } as const
+      const item = 'prefixValue'
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
 
-    assert.equal(pred({ a: 1, b: 2 }), true)
-    assert.equal(pred({ a: 0, b: 3 }), true)
-    assert.equal(pred({ a: 0, b: 1 }), false)
+    it('should return false if the field value does not start with the prefix', () => {
+      const filter = { _type: 'prefix', value: 'pre' } as const
+      const item = 'value'
+      assert.strictEqual(interpretFilter(filter, item), false)
+    })
   })
 
-  it('should evaluate prefix filter correctly', () => {
-    const filter = prefix('a', 'test')
-    const pred = predicate(filter)
+  describe('_type: =', () => {
+    it('should return true if the field value equals the filter value', () => {
+      const filter = { _type: '=', value: 'value' } as const
+      const item = 'value'
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
 
-    assert.equal(pred({ a: 'test123' }), true)
-    assert.equal(pred({ a: 'testing' }), true)
-    assert.equal(pred({ a: 'notest' }), false)
+    it('should return false if the field value does not equal the filter value', () => {
+      const filter = { _type: '=', value: 'value' } as const
+      const item = 'differentValue'
+      assert.strictEqual(interpretFilter(filter, item), false)
+    })
   })
 
-  it('should evaluate comparison filters correctly', () => {
-    const eqFilter = eq('a', 1)
-    const gtFilter = gt('a', 1)
-    const gteFilter = gte('a', 1)
-    const ltFilter = lt('a', 1)
-    const lteFilter = lte('a', 1)
-    const neFilter = ne('a', 1)
+  describe('_type: >', () => {
+    it('should return true if the field value is greater than the filter value', () => {
+      const filter = { _type: '>', value: 10 } as const
+      const item = 20
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
 
-    assert.equal(predicate(eqFilter)({ a: 1 }), true)
-    assert.equal(predicate(eqFilter)({ a: 2 }), false)
+    it('should return false if the field value is not greater than the filter value', () => {
+      const filter = { _type: '>', value: 10 } as const
+      const item = 5
+      assert.strictEqual(interpretFilter(filter, item), false)
+    })
+  })
 
-    assert.equal(predicate(gtFilter)({ a: 2 }), true)
-    assert.equal(predicate(gtFilter)({ a: 1 }), false)
+  describe('_type: >=', () => {
+    it('should return true if the field value is greater than or equal to the filter value', () => {
+      const filter = { _type: '>=', value: 10 } as const
+      const item = 10
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
 
-    assert.equal(predicate(gteFilter)({ a: 1 }), true)
-    assert.equal(predicate(gteFilter)({ a: 0 }), false)
+    it('should return false if the field value is not greater than or equal to the filter value', () => {
+      const filter = { _type: '>=', value: 10 } as const
+      const item = 5
+      assert.strictEqual(interpretFilter(filter, item), false)
+    })
+  })
 
-    assert.equal(predicate(ltFilter)({ a: 0 }), true)
-    assert.equal(predicate(ltFilter)({ a: 1 }), false)
+  describe('_type: <', () => {
+    it('should return true if the field value is less than the filter value', () => {
+      const filter = { _type: '<', value: 10 } as const
+      const item = 5
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
 
-    assert.equal(predicate(lteFilter)({ a: 1 }), true)
-    assert.equal(predicate(lteFilter)({ a: 2 }), false)
+    it('should return false if the field value is not less than the filter value', () => {
+      const filter = { _type: '<', value: 10 } as const
+      const item = 20
+      assert.strictEqual(interpretFilter(filter, item), false)
+    })
+  })
 
-    assert.equal(predicate(neFilter)({ a: 2 }), true)
-    assert.equal(predicate(neFilter)({ a: 1 }), false)
+  describe('_type: <=', () => {
+    it('should return true if the field value is less than or equal to the filter value', () => {
+      const filter = { _type: '<=', value: 10 } as const
+      const item = 10
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
+
+    it('should return false if the field value is not less than or equal to the filter value', () => {
+      const filter = { _type: '<=', value: 10 } as const
+      const item = 20
+      assert.strictEqual(interpretFilter(filter, item), false)
+    })
+  })
+
+  describe('_type: <>', () => {
+    it('should return true if the field value is not equal to the filter value', () => {
+      const filter = { _type: '<>', value: 'value' } as const
+      const item = 'differentValue'
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
+
+    it('should return false if the field value is equal to the filter value', () => {
+      const filter = { _type: '<>', value: 'value' } as const
+      const item = 'value'
+      assert.strictEqual(interpretFilter(filter, item), false)
+    })
+  })
+
+  describe('complex filters', () => {
+    it('should handle nested object fields', () => {
+      const filter = { nested: { field: { _type: '=', value: 'value' } } } as const
+      const item = { nested: { field: 'value' } }
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
+
+    it('should handle multiple nested object fields', () => {
+      const filter = { nested: { field: { _type: '=', value: 'value' } } } as const
+      const item = { nested: { field: 'value' } }
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
+
+    it('should return false for non-matching nested object fields', () => {
+      const filter = { nested: { _type: '=', value: 'value' } } as const
+      const item = { nested: { field: 'differentValue' } }
+      assert.strictEqual(interpretFilter(filter, item), false)
+    })
+
+    it('should return false for non-matching multiple nested object fields', () => {
+      const filter = { nested: { field: { _type: '=', value: 'value' } } } as const
+      const item = { nested: { field: 'differentValue' } }
+      assert.strictEqual(interpretFilter(filter, item), false)
+    })
   })
 })
