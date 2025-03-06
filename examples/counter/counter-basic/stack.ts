@@ -3,8 +3,8 @@ import { FunctionUrlAuthType } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { Construct } from 'constructs'
 import { resolve } from 'node:path'
-import { IEventStore } from '../../src/aws-cdk'
-import { commonFunctionEnv, commonFunctionProps } from '../lib/cdk-defaults'
+import { IEventStore } from '../../../src/aws-cdk'
+import { commonFunctionEnv, commonFunctionProps } from '../../lib/cdk-defaults'
 
 export interface CounterStackProps extends StackProps {
   eventStore: IEventStore

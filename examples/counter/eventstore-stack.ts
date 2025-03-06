@@ -1,9 +1,9 @@
 import { RemovalPolicy, Stack } from "aws-cdk-lib"
+import { Billing } from "aws-cdk-lib/aws-dynamodb"
 import { EventBus } from "aws-cdk-lib/aws-events"
-import { Construct } from "constructs"
-import { EventStore, IEventStore } from "../src/aws-cdk"
-import { AttributeType, Billing, ITable, TableV2 } from "aws-cdk-lib/aws-dynamodb"
 import { ApplicationLogLevel } from "aws-cdk-lib/aws-lambda"
+import { Construct } from "constructs"
+import { EventStore, IEventStore } from "../../src/aws-cdk"
 
 /**
  * Stack for all the counter examples.  Creates the shared

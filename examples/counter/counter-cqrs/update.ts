@@ -1,9 +1,9 @@
 import { DynamoDBClient, ReturnValue } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import assert from 'node:assert'
-import { DynamoDB, Notification, Revision, prefix } from '../../src/eventstore'
+import { DynamoDB, Notification, Revision, prefix } from '../../../src/eventstore'
+import { getRevision, updateRevision } from '../../lib/revision'
 import { CounterEvent } from '../domain'
-import { getRevision, updateRevision } from '../lib/revision'
 
 assert(process.env.viewTable)
 assert(process.env.eventStoreConfig)

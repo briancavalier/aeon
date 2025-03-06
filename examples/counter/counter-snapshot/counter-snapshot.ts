@@ -1,4 +1,4 @@
-import { Revision } from '../../src/eventstore'
+import { Revision } from '../../../src/eventstore'
 
 export type CounterSnapshot = Readonly<{
   revision: Revision
