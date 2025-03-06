@@ -6,7 +6,7 @@ export type Filter<A> =
 
 type Operator = 'prefix' | '=' | '>' | '>=' | '<' | '<=' | '<>'
 
-export const hasType = <const F extends Filter<unknown>>(filter: F): filter is Extract<F, { readonly _type: string }> =>
+export const hasType = <A>(filter: Filter<A>): filter is Extract<Filter<A>, { readonly _type: string }> =>
   typeof filter._type === 'string'
 
 export const exists = { _type: 'exists' } as const
