@@ -1,6 +1,7 @@
 import { monotonicFactory } from 'ulid'
 import { AppendOptions, AppendResult, Committed, EventStoreClient, Pending, ReadOptions } from '../event-store-client'
 import { Revision, end, ensureInclusive, start } from '../revision'
+import { always, predicate } from './filter-predicate'
 
 export class MemoryEventStoreClient implements EventStoreClient {
   private events: Committed<unknown>[] = []
@@ -38,8 +39,9 @@ export class MemoryEventStoreClient implements EventStoreClient {
 
     const sortedEvents = range.direction === 'backward' ? this.events.reverse() : this.events
 
+    const p = filter ? predicate(filter) : always
     for (const event of sortedEvents)
-      if (event.key === key && event.revision >= range.start && event.revision <= range.end)
+      if (event.key === key && event.revision >= range.start && event.revision <= range.end && p(event))
         yield event as Committed<Event>
   }
 
@@ -49,8 +51,9 @@ export class MemoryEventStoreClient implements EventStoreClient {
 
     const sortedEvents = range.direction === 'backward' ? this.events.reverse() : this.events
 
+    const p = filter ? predicate(filter) : always
     for (const event of sortedEvents)
-      if (event.revision >= range.start && event.revision <= range.end)
+      if (event.revision >= range.start && event.revision <= range.end && p(event))
         yield event as Committed<Event>
   }
 }

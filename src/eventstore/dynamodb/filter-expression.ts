@@ -40,12 +40,12 @@ function render<A extends NativeAttributeValue>(e: Filter<A>, state: RenderState
       state.values[placeholder] = convertToAttr(e.value)
       return `begins_with(${attributePlaceholder}, ${placeholder})`
     }
-    case 'comparison': {
+    default: {
       const attributePlaceholder = `#attr${counter++}`
       state.names[attributePlaceholder] = e.attribute
       const placeholder = `:val${counter++}`
       state.values[placeholder] = convertToAttr(e.value)
-      return `(${attributePlaceholder} ${e.operator} ${placeholder})`
+      return `(${attributePlaceholder} ${e.type} ${placeholder})`
     }
   }
 }
