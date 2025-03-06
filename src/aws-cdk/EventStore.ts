@@ -91,7 +91,7 @@ export class EventStore extends Construct implements IEventStore {
       applicationLogLevelV2: logLevel,
       systemLogLevelV2: SystemLogLevel.WARN,
       environment: {
-        eventStoreConfig: this.config,
+        source: this.name,
         eventBusName: this.eventBus.eventBusName
       }
     })

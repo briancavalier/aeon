@@ -26,13 +26,13 @@ export class CounterCQRSStack extends Stack {
     })
 
     const update = new NodejsFunction(this, 'counter-cqrs-update-handler', {
-      functionName: 'counter-update-handler',
+      functionName: 'counter-cqrs-update-handler',
       ...commonFunctionProps,
       entry: resolve(import.meta.dirname, 'update.ts'),
       environment: {
         ...commonFunctionEnv,
         viewTable: counterView.tableName,
-        source: props.eventStore.name
+        eventStoreConfig: props.eventStore.config
       }
     })
 

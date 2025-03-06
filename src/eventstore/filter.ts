@@ -1,17 +1,22 @@
 export type Filter<A> =
-  | { readonly type: 'and', readonly value: readonly Filter<A>[] }
-  | { readonly type: 'or', readonly value: readonly Filter<A>[] }
-  | { readonly type: 'prefix', readonly value: A, readonly attribute: string }
-  | { readonly type: 'comparison', readonly value: A, readonly attribute: string, readonly operator: Operator }
+  | { readonly _type: 'true' }
+  | { readonly _type: 'exists' }
+  | { readonly _type: Operator; readonly value: A }
+  | { readonly [K in string]: Filter<A> }
 
-export type Operator = '=' | '>' | '>=' | '<' | '<=' | '<>'
+type Operator = 'prefix' | '=' | '>' | '>=' | '<' | '<=' | '<>'
 
-export const and = <A>(...value: readonly Filter<A>[]): Filter<A> => ({ type: 'and', value })
-export const or = <A>(...value: readonly Filter<A>[]): Filter<A> => ({ type: 'or', value })
-export const prefix = <A>(attribute: string, value: A): Filter<A> => ({ type: 'prefix', value, attribute })
-export const eq = <A>(attribute: string, value: A): Filter<A> => ({ type: 'comparison', value, attribute, operator: '=' })
-export const gt = <A>(attribute: string, value: A): Filter<A> => ({ type: 'comparison', value, attribute, operator: '>' })
-export const gte = <A>(attribute: string, value: A): Filter<A> => ({ type: 'comparison', value, attribute, operator: '>=' })
-export const lt = <A>(attribute: string, value: A): Filter<A> => ({ type: 'comparison', value, attribute, operator: '<' })
-export const lte = <A>(attribute: string, value: A): Filter<A> => ({ type: 'comparison', value, attribute, operator: '<=' })
-export const ne = <A>(attribute: string, value: A): Filter<A> => ({ type: 'comparison', value, attribute, operator: '<>' })
+export const hasType = <const F extends Filter<unknown>>(filter: F): filter is Extract<F, { readonly _type: string }> =>
+  typeof filter._type === 'string'
+
+export const exists = { _type: 'exists' } as const
+export const always = { _type: 'true' } as const
+
+export const prefix = <A>(value: A): Filter<A> => ({ _type: 'prefix', value })
+export const eq = <A>(value: A): Filter<A> => ({ _type: '=', value })
+export const gt = <A>(value: A): Filter<A> => ({ _type: '>', value })
+export const gte = <A>(value: A): Filter<A> => ({ _type: '>=', value })
+export const lt = <A>(value: A): Filter<A> => ({ _type: '<', value })
+export const lte = <A>(value: A): Filter<A> => ({ _type: '<=', value })
+export const ne = <A>(value: A): Filter<A> => ({ _type: '<>', value })
+

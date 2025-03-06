@@ -29,7 +29,7 @@ export const handler = async ({ revision }: Notification) => {
     start,
     startExclusive: true,
     end: revision,
-    filter: prefix('key', 'counter/')
+    filter: { key: prefix('counter/') }
   })
 
   console.debug({ eventStoreConfig, start, end: revision })
