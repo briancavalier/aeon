@@ -2,7 +2,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { getRevision } from '../lib/revision'
+import { getRevision } from '../../lib/revision'
 
 assert(process.env.viewTable)
 const { viewTable } = process.env

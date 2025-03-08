@@ -24,6 +24,10 @@
     "./dynamodb": {
       "import": "./dist/esm/dynamodb/index.js",
       "types": "./dist/esm/dynamodb/index.d.ts"
+    },
+    "./memory": {
+      "import": "./dist/esm/memory/index.js",
+      "types": "./dist/esm/memory/index.d.ts"
     }
   },
   "scripts": {

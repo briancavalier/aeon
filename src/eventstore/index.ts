@@ -4,5 +4,3 @@ export * from './filter'
 export * from './notification'
 export * from './revision'
 
-export * as DynamoDB from './dynamodb'
-

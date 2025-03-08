@@ -2,7 +2,8 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { DynamoDBEventStoreClient, Revision, key, reduce, start } from '../../src/eventstore'
+import { Revision, reduce, start } from '../../../src/eventstore'
+import { fromConfigString } from '../../../src/eventstore/dynamodb'
 import { CounterEvent } from '../domain'
 
 assert(process.env.viewTable)
@@ -11,7 +12,7 @@ assert(process.env.eventStoreConfig)
 const { viewTable, eventStoreConfig } = process.env
 
 const client = new DynamoDBClient({})
-const store = DynamoDBEventStoreClient.fromConfigString(eventStoreConfig, client)
+const store = fromConfigString(eventStoreConfig, client)
 const docClient = DynamoDBDocumentClient.from(client)
 
 type Counter = Readonly<{
@@ -40,7 +41,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
   console.debug({ name, revision, counter })
 
   // Read all the events since the revision of the current view state
-  const events = store.read(key<CounterEvent>(`counter/${name}`), {
+  const events = store.read<CounterEvent>(`counter/${name}`, {
     start: counter.revision,
     startExclusive: true,
   })

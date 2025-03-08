@@ -1,11 +1,11 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { DynamoDB } from '../../../src/eventstore'
+import { fromConfigString } from "../../../src/eventstore/dynamodb"
 import { CounterEvent } from '../domain'
 
 assert(process.env.eventStoreConfig)
-const store = DynamoDB.fromConfigString(process.env.eventStoreConfig, new DynamoDBClient({}))
+const store = fromConfigString(process.env.eventStoreConfig, new DynamoDBClient({}))
 
 // Queries can be use-case specific, tailored to answer specific user or
 // business questions.  This query returns the counter's current value,

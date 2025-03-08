@@ -1,14 +1,15 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { ok as assert } from 'node:assert'
-import { DynamoDB, reduce } from '../../../src/eventstore'
+import { reduce } from '../../../src/eventstore'
+import { fromConfigString } from '../../../src/eventstore/dynamodb'
 import { CounterCommand, decide, initialValue, update } from "../aggregate"
 import { CounterEvent } from '../domain'
 
 assert(process.env.eventStoreConfig)
 
 const client = new DynamoDBClient({})
-const store = DynamoDB.fromConfigString(process.env.eventStoreConfig, client)
+const store = fromConfigString(process.env.eventStoreConfig, client)
 
 export const handler = async (event: APIGatewayProxyEvent) => {
   // In a real app, we'd parse+validate the incoming command
