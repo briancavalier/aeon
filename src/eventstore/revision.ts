@@ -36,7 +36,7 @@ export const ensureInclusive = (r: ReadOptions): InclusiveRange => ({
     : (!r.end || r.end === end) ? max
       : r.endExclusive ? prevRevision(r.end)
         : r.end,
-  limit: r.limit ?? Infinity,
+  limit: Math.max(0, r.limit ?? Infinity),
   direction: r.direction ?? 'forward'
 })
 
