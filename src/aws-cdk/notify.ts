@@ -20,8 +20,8 @@ export const handler = ({ Records }: DynamoDBStreamEvent) => {
 
   const events = Records.map(({ dynamodb }) => {
     if (!dynamodb?.NewImage) return undefined
-    const { key, revision, type, committedAt } = dynamodb.NewImage as Record<string, AttributeValue>
-    return { key: key.S, revision: revision.S, type: type.S, committedAt: committedAt.S }
+    const { key, type } = dynamodb.NewImage as Record<string, AttributeValue>
+    return { key: key.S, type: type.S }
   })
 
   const notification = { revision, events }

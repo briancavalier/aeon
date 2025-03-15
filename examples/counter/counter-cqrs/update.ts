@@ -1,7 +1,7 @@
 import { DynamoDBClient, ReturnValue } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import assert from 'node:assert'
-import { Notification, Revision, prefix } from '../../../src/eventstore'
+import { Committed, Notification, prefix } from '../../../src/eventstore'
 import { fromConfigString } from "../../../src/eventstore/dynamodb"
 import { getRevision, updateRevision } from '../../lib/revision'
 import { CounterEvent } from '../domain'
@@ -35,9 +35,9 @@ export const handler = async ({ revision }: Notification) => {
   console.debug({ eventStoreConfig, start, end: revision })
 
   // Update the view table incrementally
-  for await (const { key, data, revision } of events) {
-    console.info({ key, data, revision })
-    await updateCounter(docClient, viewTable, key, data, revision)
+  for await (const event of events) {
+    console.info(event)
+    await updateCounter(docClient, viewTable, event)
   }
 
   // Update the last seen revision, so we don't need
@@ -46,22 +46,24 @@ export const handler = async ({ revision }: Notification) => {
     .catch(logConditionFailed(`Ignoring old revision update: ${revision}`))
 }
 
-export const updateCounter = (ddb: DynamoDBDocumentClient, table: string, key: string, { type }: CounterEvent, revision: Revision) =>
+export const updateCounter = (ddb: DynamoDBDocumentClient, table: string, { key, type, revision }: Committed<CounterEvent>) =>
   ddb.send(new UpdateCommand({
     TableName: table,
     Key: { pk: key },
-    UpdateExpression: 'add #value :a, #increments :i, #decrements :d set #revision = :revision',
+    UpdateExpression: 'add #value :a, #increments :i, #decrements :d set #revision = :revision, #updatedAt = :updatedAt',
     ExpressionAttributeNames: {
       '#value': 'value',
       '#revision': 'revision',
       '#increments': 'increments',
-      '#decrements': 'decrements'
+      '#decrements': 'decrements',
+      '#updatedAt': 'updatedAt'
     },
     ExpressionAttributeValues: {
       ':a': type === 'incremented' ? 1 : -1,
       ':i': type === 'incremented' ? 1 : 0,
       ':d': type === 'decremented' ? 1 : 0,
-      ':revision': revision
+      ':revision': revision,
+      ':updatedAt': new Date().toISOString()
     },
     ConditionExpression: 'attribute_not_exists(#revision) or #revision <= :revision',
     ReturnValues: ReturnValue.ALL_NEW
