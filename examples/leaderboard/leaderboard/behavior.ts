@@ -1,15 +1,15 @@
 import { Competitor, LeaderboardEvent } from "./domain"
 
 export type LeaderboardCommand =
-  | Readonly<{ type: 'start' }>
-  | Readonly<{ type: 'join', userId: string }>
-  | Readonly<{ type: 'score', userId: string, score: number }>
-  | Readonly<{ type: 'finish' }>
+  | Readonly<{ type: 'start', id: string }>
+  | Readonly<{ type: 'join', id: string, userId: string }>
+  | Readonly<{ type: 'score', id: string, userId: string, score: number }>
+  | Readonly<{ type: 'finish', id: string }>
 
 export type LeaderboardState =
   | Readonly<{ type: 'not-started' }>
   | Readonly<{ type: 'started', competitors: readonly Competitor[] }>
-  | Readonly<{ type: 'finished', ranking: readonly Competitor[] }>
+  | Readonly<{ type: 'finished', competitors: readonly Competitor[] }>
 
 export const initial: LeaderboardState = { type: 'not-started' }
 
@@ -33,7 +33,7 @@ export const decide = (state: LeaderboardState, command: LeaderboardCommand): re
 
     case 'finish':
       if (state.type !== 'started') return []
-      return [{ type: 'finished', ranking: [...state.competitors].sort((a, b) => b.score - a.score) }]
+      return [{ type: 'finished', competitors: state.competitors }]
   }
 }
 
@@ -52,6 +52,6 @@ export const update = (state: LeaderboardState, event: LeaderboardEvent): Leader
 
     case 'finished':
       if (state.type !== 'started') return state
-      return { type: 'finished', ranking: event.ranking }
+      return event
   }
 }
