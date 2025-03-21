@@ -1,6 +1,4 @@
 import { App, CfnOutput, RemovalPolicy, Stack } from 'aws-cdk-lib'
-import { Billing } from 'aws-cdk-lib/aws-dynamodb'
-import { EventBus } from 'aws-cdk-lib/aws-events'
 import { FunctionUrlAuthType } from 'aws-cdk-lib/aws-lambda'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import { resolve } from 'node:path'
@@ -11,17 +9,8 @@ export class LeaderboardStack extends Stack {
   constructor(scope: App, id: string) {
     super(scope, id)
 
-    const eventBus = new EventBus(this, `${id}-eventstore-notifications`, {
-      eventBusName: `${id}-eventstore-notifications`
-    })
-
-    // -------------------------------------------
-    // Event store
-
     const eventStore = new EventStore(this, `${id}-eventstore`, {
       removalPolicy: RemovalPolicy.DESTROY,
-      billing: Billing.onDemand(),
-      eventBus
     })
 
     const command = new NodejsFunction(this, 'leaderboard-command-handler', {
