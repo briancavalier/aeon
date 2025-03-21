@@ -11,8 +11,6 @@ export interface CounterSnapshotStackProps extends StackProps {
 }
 
 export class CounterSnapshotStack extends Stack {
-  public readonly snapshotStore: IEventStore
-
   constructor(scope: Construct, id: string, { eventStore, ...props }: CounterSnapshotStackProps) {
     super(scope, id, props)
 

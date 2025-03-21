@@ -1,7 +1,7 @@
 
 import { RemovalPolicy } from 'aws-cdk-lib'
 import { AttributeType, Billing, ITable, ITableV2, StreamViewType, TableV2 } from 'aws-cdk-lib/aws-dynamodb'
-import { IEventBus } from 'aws-cdk-lib/aws-events'
+import { EventBus, IEventBus } from 'aws-cdk-lib/aws-events'
 import { IGrantable } from 'aws-cdk-lib/aws-iam'
 import { ApplicationLogLevel, IFunction, LoggingFormat, Runtime, StartingPosition, SystemLogLevel } from 'aws-cdk-lib/aws-lambda'
 import { DynamoEventSource } from 'aws-cdk-lib/aws-lambda-event-sources'
@@ -25,7 +25,7 @@ export type EventStoreProps = {
   readonly removalPolicy?: RemovalPolicy,
   readonly billing?: Billing,
   readonly revisionIndex?: string
-  readonly eventBus: IEventBus
+  readonly eventBus?: IEventBus
   readonly logLevel?: ApplicationLogLevel
 }
 
@@ -81,7 +81,9 @@ export class EventStore extends Construct implements IEventStore {
       revisionIndex: this.revisionIndex,
     })
 
-    this.eventBus = eventBus
+    this.eventBus = eventBus ?? new EventBus(scope, `${id}-notifications`, {
+      eventBusName: `${id}-notifications`
+    })
 
     this.notifier = new NodejsFunction(scope, `${id}-notifier`, {
       functionName: `${id}-notifier`,

@@ -11,8 +11,6 @@ export interface CounterOptimisticConcurrencyStackProps extends StackProps {
 }
 
 export class CounterOptimisticConcurrencyStack extends Stack {
-  public readonly snapshotStore: IEventStore
-
   constructor(scope: Construct, id: string, { eventStore, ...props }: CounterOptimisticConcurrencyStackProps) {
     super(scope, id, props)
 

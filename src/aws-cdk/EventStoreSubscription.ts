@@ -23,8 +23,8 @@ export class EventStoreSubscription extends Construct {
 
     let events: Record<string, unknown> | undefined = undefined
 
-    if(key) events = { key: key.map(toFilterPattern) }
-    if(type) events = { ...events, type: type.map(toFilterPattern) }
+    if (key) events = { key: key.map(toFilterPattern) }
+    if (type) events = { ...events, type: type.map(toFilterPattern) }
 
     this.rule = new Rule(this, `${id}-subscription-rule`, {
       ruleName: `${id}-subscription-rule`,

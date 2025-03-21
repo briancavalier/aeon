@@ -1,7 +1,4 @@
 import { RemovalPolicy, Stack } from "aws-cdk-lib"
-import { Billing } from "aws-cdk-lib/aws-dynamodb"
-import { EventBus } from "aws-cdk-lib/aws-events"
-import { ApplicationLogLevel } from "aws-cdk-lib/aws-lambda"
 import { Construct } from "constructs"
 import { EventStore, IEventStore } from "../../src/aws-cdk"
 
@@ -16,20 +13,10 @@ export class CounterEventStoreStack extends Stack {
     super(scope, id)
 
     // -------------------------------------------
-    // Event bus for notifications
-
-    const eventBus = new EventBus(this, `${id}-eventstore-notifications`, {
-      eventBusName: `${id}-eventstore-notifications`
-    })
-
-    // -------------------------------------------
     // Event store
 
     this.eventStore = new EventStore(this, `${id}-eventstore`, {
       removalPolicy: RemovalPolicy.DESTROY,
-      billing: Billing.onDemand(),
-      logLevel: ApplicationLogLevel.DEBUG,
-      eventBus
     })
   }
 }
