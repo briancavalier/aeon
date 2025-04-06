@@ -13,8 +13,11 @@ const store = fromConfigString(process.env.eventStoreConfig, client)
 
 export const handler = async (event: APIGatewayProxyEvent) => {
   const command = JSON.parse(event.body ?? '') as LeaderboardCommand
+  const correlationId = event.headers['x-correlation-id'] ?? event.requestContext.requestId
 
-  const history = store.read<LeaderboardEvent>(`leaderboard/${command.id}`)
+  const key = `leaderboard/${command.id}`
+  const revision = await store.head(key)
+  const history = store.read<LeaderboardEvent>(key)
 
   const leaderboard = await reduce(
     history,
@@ -24,5 +27,10 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   const events = decide(leaderboard, command)
 
-  return store.append(`leaderboard/${command.id}`, events.map(data => ({ type: data.type, data })))
+  return store.append(
+    key,
+    events.map(data => ({ type: data.type, correlationId, data })),
+    { expectedRevision: revision }
+  )
+
 }

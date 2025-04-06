@@ -1,8 +1,9 @@
 import { TransactionEvent } from "./domain"
 
-export type TransactionCommand =
-  | Readonly<{ type: 'credit', userId: string, amount: number, referenceId: string, memo: string }>
-  | Readonly<{ type: 'debit', userId: string, amount: number, referenceId: string, memo: string }>
+export type TransactionCommand = CreditCommand | DebitCommand
+
+export type CreditCommand = Readonly<{ type: 'credit', userId: string, amount: number, transactionId: string, memo: string }>
+export type DebitCommand = Readonly<{ type: 'debit', userId: string, amount: number, transactionId: string, memo: string }>
 
 export type TransactionState = Readonly<{
   balance: number,
@@ -17,7 +18,7 @@ export const decide = (state: TransactionState, command: TransactionCommand): re
       return [{ ...command, type: 'credited' }]
     case 'debit':
       return state.balance < command.amount
-        ? [{ ...command, type: 'debit-failed', reason: 'insufficient-funds' }]
+        ? [{ ...command, type: 'transaction-failed', reason: 'insufficient-funds' }]
         : [{ ...command, type: 'debited' }]
   }
 }
@@ -28,7 +29,7 @@ export const update = (state: TransactionState, event: TransactionEvent): Transa
       return { ...state, balance: state.balance + event.amount, transactions: [...state.transactions, event] }
     case 'debited':
       return { ...state, balance: state.balance - event.amount, transactions: [...state.transactions, event] }
-    case 'debit-failed':
+    case 'transaction-failed':
       return state
   }
 }
