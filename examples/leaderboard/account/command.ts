@@ -24,9 +24,34 @@ export const handler: SendCommand = async (command: TransactionCommand) => {
 
   const events = decide(account, command)
 
-  return store.append(
+  const result = await store.append(
     key,
     events.map(data => ({ type: data.type, data })),
     { expectedRevision: revision }
   )
+
+  switch (result.type) {
+    case 'appended':
+      return {
+        type: 'ok',
+        transactionId: command.transactionId
+      }
+    case 'unchanged':
+      return {
+        type: 'duplicate',
+        transactionId: command.transactionId,
+      }
+    case 'aborted/optimistic-concurrency':
+      return {
+        type: 'retry',
+        transactionId: command.transactionId,
+        reason: 'account was modified by another transaction'
+      }
+    case 'aborted/unknown':
+      return {
+        type: 'failed',
+        transactionId: command.transactionId,
+        reason: 'unknown error'
+      }
+  }
 }

@@ -22,7 +22,10 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     initial
   )
 
-  return leaderboard.type === 'not-started'
-    ? []
-    : leaderboard.competitors.toSorted((a, b) => b.score - a.score)
+  return {
+    ...leaderboard,
+    competitors: leaderboard.type === 'not-started'
+      ? []
+      : leaderboard.competitors?.toSorted((a, b) => b.score - a.score)
+  }
 }

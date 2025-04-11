@@ -53,5 +53,9 @@ export const update = (state: LeaderboardState, event: LeaderboardEvent): Leader
     case 'finished':
       if (state.type !== 'started') return state
       return event
+
+    case 'awarded':
+    case 'award-failed':
+      return state
   }
 }

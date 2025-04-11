@@ -61,7 +61,7 @@ export class LeaderboardStack extends Stack {
 
     accountCommandApi.grantInvoke(creditWinners)
 
-    eventStore.grantReadEvents(creditWinners)
+    eventStore.grantReadWriteEvents(creditWinners)
     new EventStoreSubscription(this, 'leaderboard-credit-winners-subscription', {
       eventStore,
       handler: creditWinners,
