@@ -32,5 +32,4 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     events.map(data => ({ type: data.type, correlationId, data })),
     { expectedRevision: revision }
   )
-
 }

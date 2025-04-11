@@ -6,4 +6,6 @@ export type TransactionResult =
   | Readonly<{ type: 'retry', transactionId: string }>
   | Readonly<{ type: 'failed', transactionId: string, reason: string }>
 
-export type SendCommand = (c: TransactionCommand) => Promise<TransactionResult>
+type WithCorrelationId = Readonly<{ correlationId?: string }>
+
+export type SendCommand = (c: TransactionCommand & WithCorrelationId) => Promise<TransactionResult>

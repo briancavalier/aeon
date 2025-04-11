@@ -27,7 +27,10 @@ export const handler: SendCommand = async (command: TransactionCommand) => {
   const result = await store.append(
     key,
     events.map(data => ({ type: data.type, data })),
-    { expectedRevision: revision }
+    {
+      expectedRevision: revision,
+      idempotencyKey: command.transactionId
+    }
   )
 
   switch (result.type) {
@@ -45,7 +48,6 @@ export const handler: SendCommand = async (command: TransactionCommand) => {
       return {
         type: 'retry',
         transactionId: command.transactionId,
-        reason: 'account was modified by another transaction'
       }
     case 'aborted/unknown':
       return {
