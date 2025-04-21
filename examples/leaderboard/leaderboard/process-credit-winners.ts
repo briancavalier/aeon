@@ -37,7 +37,7 @@ export const handler = async ({ revision, events: newEvents }: Notification) => 
 
 const credit = async (key: string, userId: string, transactionId: string, rank: number, correlationId: string | undefined, triesRemaining: number): Promise<unknown> => {
   const amount = rankCredits[rank - 1]
-  const result = await sendCredit(userId, transactionId, rank, amount)
+  const result = await sendCredit(userId, transactionId, rank, amount, correlationId)
   if (result.type === "ok") {
     console.debug({ msg: 'credited', userId, rank, transactionId })
     return store.append<LeaderboardEvent>(key, [{
