@@ -35,10 +35,10 @@ export function toFilterExpression(
           return `begins_with(${attributePath}, ${placeholder})`
         case 'and':
         case 'or':
-          return filter.filters
+          return `(${filter.filters
             .map((subFilter) => traverse(subFilter, path))
             .filter((subExpression): subExpression is string => !!subExpression)
-            .join(` ${filter._type} `)
+            .join(` ${filter._type.toUpperCase()} `)})`
         default:
           values[placeholder] = filter.value
           return `${attributePath} ${filter._type} ${placeholder}`
@@ -51,7 +51,7 @@ export function toFilterExpression(
       if (subExpression) expressions.push(subExpression)
     }
 
-    return expressions.length > 0 ? expressions.join(' AND ') : undefined
+    return expressions.length > 0 ? `(${expressions.join(' AND ')})` : undefined
   }
 
   return {
