@@ -122,6 +122,33 @@ describe(interpretFilter.name, () => {
     })
   })
 
+  describe('_type: and', () => {
+    it('should return true if all filters are true', () => {
+      const filter = { _type: 'and', filters: [{ _type: '>', value: 0 }, { _type: '<', value: 100 }] } as const
+      const item = 10
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
+
+    it('should return false if any filter is false', () => {
+      const filter = { _type: 'and', filters: [{ _type: '>', value: 0 }, { _type: '<', value: 10 }] } as const
+      const item = 10
+      assert.strictEqual(interpretFilter(filter, item), false)
+    })
+  })
+
+  describe('_type: or', () => {
+    it('should return true if any filter is true', () => {
+      const filter = { _type: 'or', filters: [{ _type: '<=', value: 10 }, { _type: '>', value: 100 }] } as const
+      const item = 10
+      assert.strictEqual(interpretFilter(filter, item), true)
+    })
+    it('should return false if all filters are false', () => {
+      const filter = { _type: 'or', filters: [{ _type: '<', value: 10 }, { _type: '>', value: 100 }] } as const
+      const item = 10
+      assert.strictEqual(interpretFilter(filter, item), false)
+    })
+  })
+
   describe('complex filters', () => {
     it('should handle nested object fields', () => {
       const filter = { nested: { field: { _type: '=', value: 'value' } } } as const

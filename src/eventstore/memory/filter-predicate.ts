@@ -1,6 +1,6 @@
 import { Filter, hasType } from "../filter"
 
-export function interpretFilter<A>(filter: Filter<A>, item: any): boolean {
+export function interpretFilter(filter: Filter<string | number | boolean>, item: any): boolean {
   if (hasType(filter)) {
     if (filter._type === 'true') return true
     if (filter._type === 'exists') return item !== undefined
@@ -15,6 +15,10 @@ export function interpretFilter<A>(filter: Filter<A>, item: any): boolean {
       case '<': return item < filter.value
       case '<=': return item <= filter.value
       case '<>': return item !== filter.value
+      case 'and':
+        return filter.filters.every((subFilter) => interpretFilter(subFilter, item))
+      case 'or':
+        return filter.filters.some((subFilter) => interpretFilter(subFilter, item))
     }
   }
 

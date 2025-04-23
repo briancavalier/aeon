@@ -20,6 +20,7 @@ Aeon isn’t production-ready. It’s a playground for learning and experimentin
 1. 😁 [counter-optimistic-concurrency](examples/counter/counter-optimistic-concurrency/) - builds on counter-cqrs by adding a new command handler that uses optimistic concurrency control to ensure counter events are only appended when their history hasn't changed.
 1. 🥳 [counter-snapshot](examples/counter/counter-snapshot/) - builds on counter-optimistic-concurrency by adding a new command handler that uses snapshots to update a counter without needing to read its entire history.
 1. 🍦 [event-sourcing-diy](examples/event-sourcing-diy/) - ice cream truck example from [The Dev Owl](https://www.youtube.com/@TheDevOwl)'s [Event Sourcing DIY YouTube series](https://www.youtube.com/watch?v=zyp9pZ7jeK8&list=PL-nSd-yeckKh7Ts5EKChek7iXcgyUGDHa)
+1. 📈 [leaderboard](examples/leaderboard) - (WIP) more extensive example with multiple bounded contexts of a leaderboards where winners earn credits, and can spend them on rewards.
 
 ### Deploying examples
 
