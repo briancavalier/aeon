@@ -22,9 +22,10 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   const leaderboards = new Map<string, Leaderboard>()
   for await (const event of events) {
+
     switch (event.type) {
       case 'started':
-        leaderboards.set(event.key, { id: event.key, status: 'started', startedAt: event.committedAt })
+        leaderboards.set(event.key, { id: parseLeaderboardId(event.key), status: 'started', startedAt: event.committedAt })
         break
       case 'finished': {
         const leaderboard = leaderboards.get(event.key)
@@ -41,3 +42,6 @@ export const handler = async (event: APIGatewayProxyEvent) => {
     )
   }
 }
+
+const parseLeaderboardId = (key: string) =>
+  key.split('/')[1] ?? key
