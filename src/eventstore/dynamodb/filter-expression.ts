@@ -8,14 +8,14 @@ export type DynamoDBExpression = {
   readonly ExpressionAttributeValues?: Record<string, AttributeValue>
 }
 
-export function toFilterExpression<A>(
-  filter: Filter<A>
+export function toFilterExpression(
+  filter: Filter<string | number | boolean>,
 ): DynamoDBExpression {
   let counter = 0
-  const values: Record<string, A> = {}
+  const values: Record<string, string | number | boolean> = {}
   const names: Record<string, string> = {}
 
-  function traverse(filter: Filter<A>, path: string[] = []): string | undefined {
+  function traverse(filter: Filter<string | number | boolean>, path: string[] = []): string | undefined {
     if (hasType(filter)) {
       if (filter._type === 'true') return undefined
 
@@ -28,11 +28,20 @@ export function toFilterExpression<A>(
       if (filter._type === 'exists') return `attribute_exists(${attributePath})`
 
       const placeholder = `:val${counter++}`
-      values[placeholder] = filter.value
 
       switch (filter._type) {
-        case 'prefix': return `begins_with(${attributePath}, ${placeholder})`
-        default: return `${attributePath} ${filter._type} ${placeholder}`
+        case 'prefix':
+          values[placeholder] = filter.value
+          return `begins_with(${attributePath}, ${placeholder})`
+        case 'and':
+        case 'or':
+          return filter.filters
+            .map((subFilter) => traverse(subFilter, path))
+            .filter((subExpression): subExpression is string => !!subExpression)
+            .join(` ${filter._type} `)
+        default:
+          values[placeholder] = filter.value
+          return `${attributePath} ${filter._type} ${placeholder}`
       }
     }
 

@@ -33,19 +33,35 @@ export class LeaderboardStack extends Stack {
       authType: FunctionUrlAuthType.NONE,
     })
 
-    const query = new NodejsFunction(this, 'leaderboard-competitors-query-handler', {
-      functionName: 'leaderboard-competitors-query-handler',
+    const queryLeaderboard = new NodejsFunction(this, 'leaderboard-query-handler', {
+      functionName: 'leaderboard-query-handler',
       ...commonFunctionProps,
-      entry: resolve(import.meta.dirname, 'query.ts'),
+      entry: resolve(import.meta.dirname, 'query-leaderboard.ts'),
       environment: {
         ...commonFunctionEnv,
         eventStoreConfig: eventStore.config
       }
     })
 
-    eventStore.grantReadEvents(query)
+    eventStore.grantReadEvents(queryLeaderboard)
 
-    const queryUrl = query.addFunctionUrl({
+    const leaderboardQueryUrl = queryLeaderboard.addFunctionUrl({
+      authType: FunctionUrlAuthType.NONE,
+    })
+
+    const queryLeaderboards = new NodejsFunction(this, 'leaderboards-query-handler', {
+      functionName: 'leaderboards-query-handler',
+      ...commonFunctionProps,
+      entry: resolve(import.meta.dirname, 'query-leaderboards.ts'),
+      environment: {
+        ...commonFunctionEnv,
+        eventStoreConfig: eventStore.config
+      }
+    })
+
+    eventStore.grantReadEvents(queryLeaderboards)
+
+    const leaderboardsQueryUrl = queryLeaderboards.addFunctionUrl({
       authType: FunctionUrlAuthType.NONE,
     })
 
@@ -60,8 +76,8 @@ export class LeaderboardStack extends Stack {
     })
 
     accountCommandApi.grantInvoke(creditWinners)
-
     eventStore.grantReadWriteEvents(creditWinners)
+
     new EventStoreSubscription(this, 'leaderboard-credit-winners-subscription', {
       eventStore,
       handler: creditWinners,
@@ -70,7 +86,8 @@ export class LeaderboardStack extends Stack {
     })
 
     new CfnOutput(this, 'leaderboardCommandUrl', { value: commandUrl.url })
-    new CfnOutput(this, 'leaderboardCompetitorsQueryUrl', { value: queryUrl.url })
+    new CfnOutput(this, 'leaderboardQueryUrl', { value: leaderboardQueryUrl.url })
+    new CfnOutput(this, 'leaderboardsQueryUrl', { value: leaderboardsQueryUrl.url })
   }
 }
 
