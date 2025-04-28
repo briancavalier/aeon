@@ -4,7 +4,7 @@ import assert from "node:assert"
 import { Committed, Notification, eq, prefix } from "../../../src/eventstore"
 import { fromConfigString } from "../../../src/eventstore/dynamodb"
 import { SendCommand } from "../account/api"
-import { invoke } from "../lib/lambda"
+import { invoke } from "../../lib/lambda"
 import { LeaderboardEvent } from "./domain"
 
 assert(process.env.eventStoreConfig)
