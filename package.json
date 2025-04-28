@@ -39,7 +39,7 @@
     "posttest:dynamodb": "cd test/dynamodb && npx cdk destroy --force"
   },
   "devDependencies": {
-    "@aws-sdk/client-dynamodb": "^3.782.0",
+    "@aws-sdk/client-dynamodb": "^3.797.0",
     "@aws-sdk/client-eventbridge": "^3.790.0",
     "@aws-sdk/client-lambda": "^3.787.0",
     "@aws-sdk/lib-dynamodb": "^3.789.0",
