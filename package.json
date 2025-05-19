@@ -44,7 +44,7 @@
     "@aws-sdk/client-lambda": "^3.804.0",
     "@aws-sdk/lib-dynamodb": "^3.799.0",
     "@types/aws-lambda": "^8.10.149",
-    "@types/node": "^22.15.3",
+    "@types/node": "^22.15.19",
     "aws-cdk": "^2.1013.0",
     "aws-cdk-lib": "^2.190.0",
     "aws-lambda": "^1.0.7",
