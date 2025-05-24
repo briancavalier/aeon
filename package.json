@@ -39,17 +39,17 @@
     "posttest:dynamodb": "cd test/dynamodb && npx cdk destroy --force"
   },
   "devDependencies": {
-    "@aws-sdk/client-dynamodb": "^3.782.0",
-    "@aws-sdk/client-eventbridge": "^3.790.0",
-    "@aws-sdk/client-lambda": "^3.787.0",
-    "@aws-sdk/lib-dynamodb": "^3.789.0",
+    "@aws-sdk/client-dynamodb": "^3.817.0",
+    "@aws-sdk/client-eventbridge": "^3.817.0",
+    "@aws-sdk/client-lambda": "^3.817.0",
+    "@aws-sdk/lib-dynamodb": "^3.817.0",
     "@types/aws-lambda": "^8.10.149",
-    "@types/node": "^22.14.1",
-    "aws-cdk": "^2.1010.0",
-    "aws-cdk-lib": "^2.190.0",
+    "@types/node": "^22.15.21",
+    "aws-cdk": "^2.1016.1",
+    "aws-cdk-lib": "^2.198.0",
     "aws-lambda": "^1.0.7",
     "constructs": "^10.4.2",
-    "tsx": "^4.19.3",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   },
   "dependencies": {
