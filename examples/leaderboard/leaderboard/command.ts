@@ -17,7 +17,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   const key = `leaderboard/${command.id}`
   const revision = await store.head(key)
-  const history = store.read<LeaderboardEvent>(key)
+  const history = store.read<LeaderboardEvent>(key, { end: revision })
 
   const leaderboard = await reduce(
     history,

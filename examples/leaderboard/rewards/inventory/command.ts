@@ -22,7 +22,7 @@ export const handler = async (event: APIGatewayProxyEvent) => {
 
   const key = 'reward-inventory'
   const revision = await store.head(key)
-  const history = store.read<InventoryEvent>(key)
+  const history = store.read<InventoryEvent>(key, { end: revision })
 
   const rewards = await reduce(
     history,

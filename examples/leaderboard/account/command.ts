@@ -14,7 +14,7 @@ const store = fromConfigString(process.env.eventStoreConfig, client)
 export const handler: SendCommand = async (command: TransactionCommand) => {
   const key = `account/${command.userId}`
   const revision = await store.head(key)
-  const history = store.read<TransactionEvent>(key)
+  const history = store.read<TransactionEvent>(key, { end: revision })
 
   const account = await reduce(
     history,
